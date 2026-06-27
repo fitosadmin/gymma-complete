@@ -1,0 +1,46 @@
+services:
+  api:
+    build: .
+    command: npm run dev
+    ports:
+      - "8085:3001"
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      FRONTEND_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://gymma:gymma@db:5432/gymma
+      REDIS_URL: redis://redis:6379
+      ACCESS_TOKEN_SECRET: dev_access_secret_change_me_0123456789
+      REFRESH_TOKEN_SECRET: dev_refresh_secret_change_me_0123456789
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: gymma
+      POSTGRES_PASSWORD: gymma
+      POSTGRES_DB: gymma
+    ports:
+      - "8086:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gymma"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "8087:6379"
+
+volumes:
+  pgdata:

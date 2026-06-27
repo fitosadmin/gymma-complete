@@ -1,0 +1,127 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* =========================================================================
+   GYMMA DESIGN TOKENS — single source of truth (spec §3)
+   Re-theme the whole app by editing values here.
+   ========================================================================= */
+:root {
+  /* Typeface — Inter (self-hosted via @fontsource-variable/inter).
+     Swap to next/font/google locally if preferred; --font-inter stays. */
+  --font-inter: "Inter Variable";
+
+  /* Primary — Energetic but not aggressive */
+  --color-primary-50: #fff7ed;
+  --color-primary-100: #ffedd5;
+  --color-primary-200: #fed7aa;
+  --color-primary-300: #fdba74;
+  --color-primary-400: #fb923c;
+  --color-primary-500: #f97316; /* Base orange — energy */
+  --color-primary-600: #ea580c;
+  --color-primary-700: #c2410c;
+
+  /* Secondary — Trust & Health */
+  --color-secondary-50: #f0fdf4;
+  --color-secondary-100: #dcfce7;
+  --color-secondary-500: #22c55e; /* Base green — health */
+  --color-secondary-600: #16a34a;
+  --color-secondary-700: #15803d;
+
+  /* Neutral — Premium feel (text + surfaces carry the design) */
+  --color-neutral-0: #ffffff;
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-500: #737373;
+  --color-neutral-600: #525252;
+  --color-neutral-700: #404040;
+  --color-neutral-800: #262626;
+  --color-neutral-900: #171717;
+
+  /* Ink — the primary action color. Near-black does the heavy lifting so the
+     brand orange stays a deliberate accent (best-of-both with the editorial look). */
+  --color-ink: #0a0a0a;
+  --color-ink-hover: #404040;
+
+  /* Semantic */
+  --color-success: var(--color-secondary-500);
+  --color-warning: #eab308;
+  --color-error: #ef4444;
+  --color-info: #3b82f6;
+
+  /* Rating */
+  --color-rating-star: #fbbf24;
+
+  /* Spacing scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+
+  /* Border radius */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-card: 0 2px 8px rgb(0 0 0 / 0.08);
+  --shadow-card-hover: 0 8px 24px rgb(0 0 0 / 0.12);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-neutral-200);
+  }
+  body {
+    background-color: var(--color-neutral-0);
+    color: var(--color-ink);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  /* Quality floor: visible keyboard focus everywhere (spec §11) */
+  :focus-visible {
+    outline: 2px solid var(--color-primary-500);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar on horizontal featured rails while keeping scroll */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+/* Reduced motion — disable animation for users who ask for it (spec §11) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
