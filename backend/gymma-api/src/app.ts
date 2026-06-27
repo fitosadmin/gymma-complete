@@ -2,7 +2,6 @@
 import express, { type Express } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { env } from './config/env';
 import { requestLogger } from './middleware/requestLogger';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler';
 import { apiRouter } from './routes';
@@ -15,7 +14,7 @@ export function createApp(): Express {
   app.use(helmet());
   app.use(
     cors({
-      origin: (origin, cb) => cb(null, true),
+      origin: (_origin, cb) => cb(null, true),
       credentials: true,
     }),
   );
