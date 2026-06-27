@@ -37,7 +37,14 @@ function mapGym(backendGym: any) {
     trainers: (backendGym.trainers || []).map((t: any) => ({
       ...t,
       photo: t.photoUrl
-    }))
+    })),
+    scores: backendGym.scores || {
+      cleanliness: backendGym.rating || 4.5,
+      equipment: backendGym.rating || 4.5,
+      trainers: backendGym.rating || 4.5,
+      value: backendGym.rating || 4.5,
+      crowd: backendGym.rating || 4.5,
+    }
   };
 }
 
