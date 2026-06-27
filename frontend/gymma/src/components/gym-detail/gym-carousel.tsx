@@ -51,7 +51,7 @@ export function GymCarousel({ images, name }: { images: string[]; name: string }
         setPrevIndex(prev);
         return (prev + 1) % images.length;
       });
-    }, 2500);
+    }, 3000);
     return () => clearInterval(timer);
   }, [isHovered, isFullScreen, images.length]);
 
