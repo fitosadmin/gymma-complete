@@ -38,15 +38,19 @@ class _CompareScreenState extends State<CompareScreen> {
         });
       }
     } on ApiException catch (e) {
-      if (mounted) setState(() {
-            _error = e.message;
-            _loading = false;
-          });
+      if (mounted) {
+        setState(() {
+          _error = e.message;
+          _loading = false;
+        });
+      }
     } catch (_) {
-      if (mounted) setState(() {
-            _error = 'Could not load gyms.';
-            _loading = false;
-          });
+      if (mounted) {
+        setState(() {
+          _error = 'Could not load gyms.';
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -57,7 +61,8 @@ class _CompareScreenState extends State<CompareScreen> {
       isScrollControlled: true,
       backgroundColor: AppColors.neutral0,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
       builder: (_) => _GymPicker(
         gyms: _all.where((g) => !selectedSlugs.contains(g.slug)).toList(),
       ),
@@ -80,7 +85,8 @@ class _CompareScreenState extends State<CompareScreen> {
     return Scaffold(
       backgroundColor: AppColors.neutral0,
       appBar: AppBar(
-        title: const Text('Compare gyms', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('Compare gyms',
+            style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -109,7 +115,8 @@ class _CompareScreenState extends State<CompareScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.cloud_off, size: 44, color: AppColors.neutral300),
+              const Icon(Icons.cloud_off,
+                  size: 44, color: AppColors.neutral300),
               const SizedBox(height: 12),
               Text(_error!,
                   textAlign: TextAlign.center,
@@ -127,7 +134,8 @@ class _CompareScreenState extends State<CompareScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.compare_arrows, size: 48, color: AppColors.neutral300),
+              const Icon(Icons.compare_arrows,
+                  size: 48, color: AppColors.neutral300),
               const SizedBox(height: 12),
               const Text('Compare up to 3 gyms',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
@@ -149,15 +157,19 @@ class _CompareScreenState extends State<CompareScreen> {
       );
 
   Widget _table() {
-    final bestPrice = _selected.map((g) => g.summary.pricePerMonth).reduce((a, b) => a < b ? a : b);
-    final bestRating = _selected.map((g) => g.summary.rating).reduce((a, b) => a > b ? a : b);
+    final bestPrice = _selected
+        .map((g) => g.summary.pricePerMonth)
+        .reduce((a, b) => a < b ? a : b);
+    final bestRating =
+        _selected.map((g) => g.summary.rating).reduce((a, b) => a > b ? a : b);
     const colW = 200.0;
 
     Widget headerCell(GymDetail d) => SizedBox(
           width: colW,
           child: Padding(
             padding: const EdgeInsets.all(10),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
                 Expanded(
                   child: Text(d.summary.name,
@@ -172,12 +184,14 @@ class _CompareScreenState extends State<CompareScreen> {
                 ),
               ]),
               Text(d.summary.area,
-                  style: const TextStyle(color: AppColors.neutral500, fontSize: 12)),
+                  style: const TextStyle(
+                      color: AppColors.neutral500, fontSize: 12)),
             ]),
           ),
         );
 
-    Widget row(String label, List<Widget> cells, {bool shade = false}) => Container(
+    Widget row(String label, List<Widget> cells, {bool shade = false}) =>
+        Container(
           color: shade ? AppColors.neutral50 : null,
           child: Row(children: [
             SizedBox(
@@ -186,7 +200,9 @@ class _CompareScreenState extends State<CompareScreen> {
                 padding: const EdgeInsets.all(10),
                 child: Text(label,
                     style: const TextStyle(
-                        fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.neutral500)),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.neutral500)),
               ),
             ),
             ...cells,
@@ -205,7 +221,10 @@ class _CompareScreenState extends State<CompareScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(children: [const SizedBox(width: 120), ..._selected.map(headerCell)]),
+          Row(children: [
+            const SizedBox(width: 120),
+            ..._selected.map(headerCell)
+          ]),
           const Divider(height: 1),
           row('Price/mo', [
             for (final d in _selected)
@@ -219,56 +238,89 @@ class _CompareScreenState extends State<CompareScreen> {
                 highlight: d.summary.pricePerMonth == bestPrice,
               ),
           ]),
-          row('Rating', [
-            for (final d in _selected)
-              cell(
-                Row(children: [
-                  StarRating(d.summary.rating, size: 14),
-                  const SizedBox(width: 4),
-                  Text('(${d.summary.reviewCount})',
-                      style: const TextStyle(fontSize: 11, color: AppColors.neutral500)),
-                ]),
-                highlight: d.summary.rating == bestRating,
-              ),
-          ], shade: true),
+          row(
+              'Rating',
+              [
+                for (final d in _selected)
+                  cell(
+                    Row(children: [
+                      StarRating(d.summary.rating, size: 14),
+                      const SizedBox(width: 4),
+                      Text('(${d.summary.reviewCount})',
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.neutral500)),
+                    ]),
+                    highlight: d.summary.rating == bestRating,
+                  ),
+              ],
+              shade: true),
           row('Open now', [
             for (final d in _selected)
               cell(Icon(d.summary.isOpenNow ? Icons.check_circle : Icons.cancel,
                   size: 18,
-                  color: d.summary.isOpenNow ? AppColors.secondary500 : AppColors.neutral300)),
+                  color: d.summary.isOpenNow
+                      ? AppColors.secondary500
+                      : AppColors.neutral300)),
           ]),
-          row('Women friendly', [
-            for (final d in _selected)
-              cell(Icon(d.summary.womenFriendly ? Icons.check_circle : Icons.remove,
-                  size: 18,
-                  color: d.summary.womenFriendly ? AppColors.secondary500 : AppColors.neutral300)),
-          ], shade: true),
+          row(
+              'Women friendly',
+              [
+                for (final d in _selected)
+                  cell(Icon(
+                      d.summary.womenFriendly
+                          ? Icons.check_circle
+                          : Icons.remove,
+                      size: 18,
+                      color: d.summary.womenFriendly
+                          ? AppColors.secondary500
+                          : AppColors.neutral300)),
+              ],
+              shade: true),
           row('Parking', [
             for (final d in _selected)
-              cell(Icon(d.summary.hasParking ? Icons.check_circle : Icons.remove,
+              cell(Icon(
+                  d.summary.hasParking ? Icons.check_circle : Icons.remove,
                   size: 18,
-                  color: d.summary.hasParking ? AppColors.secondary500 : AppColors.neutral300)),
+                  color: d.summary.hasParking
+                      ? AppColors.secondary500
+                      : AppColors.neutral300)),
           ]),
-          for (final score in const ['cleanliness', 'equipment', 'trainers', 'value', 'crowd'])
-            row(_scoreLabel(score), [
-              for (final d in _selected) cell(Text(_scoreVal(d, score).toStringAsFixed(1))),
-            ], shade: ['equipment', 'value'].contains(score)),
-          row('Amenities', [
-            for (final d in _selected)
-              cell(Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: d.summary.amenities
-                    .map((a) => Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: AppColors.neutral100,
-                              borderRadius: BorderRadius.circular(AppRadius.full)),
-                          child: Text(a, style: const TextStyle(fontSize: 10)),
-                        ))
-                    .toList(),
-              )),
-          ], shade: true),
+          for (final score in const [
+            'cleanliness',
+            'equipment',
+            'trainers',
+            'value',
+            'crowd'
+          ])
+            row(
+                _scoreLabel(score),
+                [
+                  for (final d in _selected)
+                    cell(Text(_scoreVal(d, score).toStringAsFixed(1))),
+                ],
+                shade: ['equipment', 'value'].contains(score)),
+          row(
+              'Amenities',
+              [
+                for (final d in _selected)
+                  cell(Wrap(
+                    spacing: 4,
+                    runSpacing: 4,
+                    children: d.summary.amenities
+                        .map((a) => Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                  color: AppColors.neutral100,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.full)),
+                              child:
+                                  Text(a, style: const TextStyle(fontSize: 10)),
+                            ))
+                        .toList(),
+                  )),
+              ],
+              shade: true),
         ],
       ),
     );
@@ -307,7 +359,8 @@ class _GymPickerState extends State<_GymPicker> {
             '${g.name} ${g.area}'.toLowerCase().contains(_q.toLowerCase()))
         .toList();
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding:
+          EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SizedBox(
         height: MediaQuery.of(context).size.height * 0.7,
         child: Column(
@@ -317,7 +370,8 @@ class _GymPickerState extends State<_GymPicker> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                    color: AppColors.neutral300, borderRadius: BorderRadius.circular(2))),
+                    color: AppColors.neutral300,
+                    borderRadius: BorderRadius.circular(2))),
             Padding(
               padding: const EdgeInsets.all(16),
               child: TextField(
@@ -326,7 +380,8 @@ class _GymPickerState extends State<_GymPicker> {
                 decoration: InputDecoration(
                   hintText: 'Search a gym to add…',
                   prefixIcon: const Icon(Icons.search),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.md)),
                 ),
               ),
             ),

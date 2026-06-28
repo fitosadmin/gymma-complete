@@ -93,14 +93,20 @@ class _SearchScreenState extends State<SearchScreen> {
     final q = _applied.trim().toLowerCase();
     var list = _all.where((g) {
       if (q.isNotEmpty &&
-          !('${g.name} ${g.area} ${g.city}'.toLowerCase().contains(q))) return false;
+          !('${g.name} ${g.area} ${g.city}'.toLowerCase().contains(q))) {
+        return false;
+      }
       if (_status == _Status.open && !g.isOpenNow) return false;
       if (_status == _Status.closed && g.isOpenNow) return false;
       if (_womenOnly && !g.womenFriendly) return false;
-      if (_distance > 0 && (g.distanceKm ?? double.infinity) > _distance) return false;
+      if (_distance > 0 && (g.distanceKm ?? double.infinity) > _distance) {
+        return false;
+      }
       if (_price != null) {
         final band = _priceBands.firstWhere((b) => b.value == _price);
-        if (g.pricePerMonth < band.min || g.pricePerMonth > band.max) return false;
+        if (g.pricePerMonth < band.min || g.pricePerMonth > band.max) {
+          return false;
+        }
       }
       return true;
     }).toList();
@@ -119,7 +125,8 @@ class _SearchScreenState extends State<SearchScreen> {
       isScrollControlled: true,
       backgroundColor: AppColors.neutral0,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
       builder: (_) => StatefulBuilder(
         builder: (context, setSheet) {
           void sync(VoidCallback fn) {
@@ -127,14 +134,17 @@ class _SearchScreenState extends State<SearchScreen> {
             setState(() {});
           }
 
-          Widget chip(String label, bool active, VoidCallback onTap) => GestureDetector(
+          Widget chip(String label, bool active, VoidCallback onTap) =>
+              GestureDetector(
                 onTap: onTap,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: active ? AppColors.ink : AppColors.neutral0,
                     borderRadius: BorderRadius.circular(AppRadius.full),
-                    border: Border.all(color: active ? AppColors.ink : AppColors.neutral200),
+                    border: Border.all(
+                        color: active ? AppColors.ink : AppColors.neutral200),
                   ),
                   child: Text(label,
                       style: TextStyle(
@@ -161,7 +171,8 @@ class _SearchScreenState extends State<SearchScreen> {
                 const SizedBox(height: 16),
                 Row(children: [
                   const Text('Filters',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
                   const Spacer(),
                   TextButton(
                     onPressed: () => sync(() {
@@ -177,18 +188,25 @@ class _SearchScreenState extends State<SearchScreen> {
                 const Text('Status', style: _sectionStyle),
                 const SizedBox(height: 10),
                 Row(children: [
-                  chip('Open', _status == _Status.open,
-                      () => sync(() => _status = _status == _Status.open ? null : _Status.open)),
+                  chip(
+                      'Open',
+                      _status == _Status.open,
+                      () => sync(() => _status =
+                          _status == _Status.open ? null : _Status.open)),
                   const SizedBox(width: 8),
-                  chip('Closed', _status == _Status.closed,
-                      () => sync(() => _status = _status == _Status.closed ? null : _Status.closed)),
+                  chip(
+                      'Closed',
+                      _status == _Status.closed,
+                      () => sync(() => _status =
+                          _status == _Status.closed ? null : _Status.closed)),
                 ]),
                 const SizedBox(height: 20),
                 const Text('Women Friendly', style: _sectionStyle),
                 const SizedBox(height: 6),
                 Row(children: [
-                  const Expanded(child: Text('Only show women-friendly gyms',
-                      style: TextStyle(color: AppColors.neutral600))),
+                  const Expanded(
+                      child: Text('Only show women-friendly gyms',
+                          style: TextStyle(color: AppColors.neutral600))),
                   Switch(
                     value: _womenOnly,
                     activeColor: AppColors.ink,
@@ -203,7 +221,8 @@ class _SearchScreenState extends State<SearchScreen> {
                   runSpacing: 8,
                   children: [
                     for (final d in _distanceOptions)
-                      chip(d.$2, _distance == d.$1, () => sync(() => _distance = d.$1)),
+                      chip(d.$2, _distance == d.$1,
+                          () => sync(() => _distance = d.$1)),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -212,20 +231,27 @@ class _SearchScreenState extends State<SearchScreen> {
                 ..._priceBands.map((b) => Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: GestureDetector(
-                        onTap: () =>
-                            sync(() => _price = _price == b.value ? null : b.value),
+                        onTap: () => sync(
+                            () => _price = _price == b.value ? null : b.value),
                         child: Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 12),
                           decoration: BoxDecoration(
-                            color: _price == b.value ? AppColors.ink : AppColors.neutral0,
+                            color: _price == b.value
+                                ? AppColors.ink
+                                : AppColors.neutral0,
                             borderRadius: BorderRadius.circular(AppRadius.md),
                             border: Border.all(
-                                color: _price == b.value ? AppColors.ink : AppColors.neutral200),
+                                color: _price == b.value
+                                    ? AppColors.ink
+                                    : AppColors.neutral200),
                           ),
                           child: Text(b.label,
                               style: TextStyle(
-                                  color: _price == b.value ? Colors.white : AppColors.neutral700,
+                                  color: _price == b.value
+                                      ? Colors.white
+                                      : AppColors.neutral700,
                                   fontWeight: FontWeight.w500)),
                         ),
                       ),
@@ -256,7 +282,8 @@ class _SearchScreenState extends State<SearchScreen> {
       context: context,
       backgroundColor: AppColors.neutral0,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
       builder: (_) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -296,7 +323,8 @@ class _SearchScreenState extends State<SearchScreen> {
     return Scaffold(
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(
-        title: const Text('Discover', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('Discover',
+            style: TextStyle(fontWeight: FontWeight.w700)),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(64),
           child: Padding(
@@ -317,13 +345,16 @@ class _SearchScreenState extends State<SearchScreen> {
                       contentPadding: const EdgeInsets.symmetric(vertical: 10),
                       border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
-                          borderSide: const BorderSide(color: AppColors.neutral200)),
+                          borderSide:
+                              const BorderSide(color: AppColors.neutral200)),
                       enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
-                          borderSide: const BorderSide(color: AppColors.neutral200)),
+                          borderSide:
+                              const BorderSide(color: AppColors.neutral200)),
                       focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(AppRadius.md),
-                          borderSide: const BorderSide(color: AppColors.primary500)),
+                          borderSide:
+                              const BorderSide(color: AppColors.primary500)),
                     ),
                   ),
                 ),
@@ -351,7 +382,8 @@ class _SearchScreenState extends State<SearchScreen> {
                         const SizedBox(height: 12),
                         Text(_error!,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(color: AppColors.neutral500)),
+                            style:
+                                const TextStyle(color: AppColors.neutral500)),
                         const SizedBox(height: 16),
                         FilledButton(
                             onPressed: _load, child: const Text('Retry')),
@@ -360,64 +392,73 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 )
               : Column(
-              children: [
-                // controls row
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                  child: Row(
-                    children: [
-                      Text.rich(TextSpan(children: [
-                        TextSpan(
-                            text: '${results.length} ',
-                            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
-                        TextSpan(
-                            text: 'gym${results.length == 1 ? '' : 's'} found',
-                            style: const TextStyle(color: AppColors.neutral500, fontSize: 15)),
-                      ])),
-                      const Spacer(),
-                      _PillButton(
-                        icon: Icons.tune,
-                        label: _activeFilterCount > 0 ? 'Filters ($_activeFilterCount)' : 'Filters',
-                        active: _activeFilterCount > 0,
-                        onTap: _openFilters,
+                  children: [
+                    // controls row
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                      child: Row(
+                        children: [
+                          Text.rich(TextSpan(children: [
+                            TextSpan(
+                                text: '${results.length} ',
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.w800, fontSize: 15)),
+                            TextSpan(
+                                text:
+                                    'gym${results.length == 1 ? '' : 's'} found',
+                                style: const TextStyle(
+                                    color: AppColors.neutral500, fontSize: 15)),
+                          ])),
+                          const Spacer(),
+                          _PillButton(
+                            icon: Icons.tune,
+                            label: _activeFilterCount > 0
+                                ? 'Filters ($_activeFilterCount)'
+                                : 'Filters',
+                            active: _activeFilterCount > 0,
+                            onTap: _openFilters,
+                          ),
+                          const SizedBox(width: 8),
+                          _PillButton(
+                              icon: Icons.swap_vert,
+                              label: 'Sort',
+                              onTap: _sortSheet),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      _PillButton(icon: Icons.swap_vert, label: 'Sort', onTap: _sortSheet),
-                    ],
-                  ),
+                    ),
+                    Expanded(
+                      child: _mapView
+                          ? Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                              child: GymMap(gyms: results),
+                            )
+                          : results.isEmpty
+                              ? _empty()
+                              : GridView.builder(
+                                  padding:
+                                      const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                                  gridDelegate:
+                                      const SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 460,
+                                    mainAxisExtent: 320,
+                                    crossAxisSpacing: 14,
+                                    mainAxisSpacing: 14,
+                                  ),
+                                  itemCount: results.length,
+                                  itemBuilder: (_, i) => GymCard(results[i]),
+                                ),
+                    ),
+                  ],
                 ),
-                Expanded(
-                  child: _mapView
-                      ? Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-                          child: GymMap(gyms: results),
-                        )
-                      : results.isEmpty
-                          ? _empty()
-                          : GridView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              gridDelegate:
-                                  const SliverGridDelegateWithMaxCrossAxisExtent(
-                                maxCrossAxisExtent: 460,
-                                mainAxisExtent: 320,
-                                crossAxisSpacing: 14,
-                                mainAxisSpacing: 14,
-                              ),
-                              itemCount: results.length,
-                              itemBuilder: (_, i) => GymCard(results[i]),
-                            ),
-                ),
-              ],
-            ),
     );
   }
 
-  Widget _empty() => Center(
+  Widget _empty() => const Center(
         child: Padding(
-          padding: const EdgeInsets.all(32),
+          padding: EdgeInsets.all(32),
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            children: const [
+            children: [
               Icon(Icons.search_off, size: 48, color: AppColors.neutral300),
               SizedBox(height: 12),
               Text('No gyms match your filters',
@@ -459,7 +500,10 @@ class _PillButton extends StatelessWidget {
   final bool active;
   final VoidCallback onTap;
   const _PillButton(
-      {required this.icon, required this.label, this.active = false, required this.onTap});
+      {required this.icon,
+      required this.label,
+      this.active = false,
+      required this.onTap});
   @override
   Widget build(BuildContext context) => Material(
         color: active ? AppColors.ink : AppColors.neutral0,
@@ -471,10 +515,13 @@ class _PillButton extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppRadius.full),
-              border: Border.all(color: active ? AppColors.ink : AppColors.neutral200),
+              border: Border.all(
+                  color: active ? AppColors.ink : AppColors.neutral200),
             ),
             child: Row(mainAxisSize: MainAxisSize.min, children: [
-              Icon(icon, size: 16, color: active ? Colors.white : AppColors.neutral700),
+              Icon(icon,
+                  size: 16,
+                  color: active ? Colors.white : AppColors.neutral700),
               const SizedBox(width: 6),
               Text(label,
                   style: TextStyle(

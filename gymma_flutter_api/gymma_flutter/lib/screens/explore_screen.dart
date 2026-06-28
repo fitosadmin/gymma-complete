@@ -47,8 +47,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  void _toSearch([String q = '']) =>
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => SearchScreen(initialQuery: q)));
+  void _toSearch([String q = '']) => Navigator.of(context)
+      .push(MaterialPageRoute(builder: (_) => SearchScreen(initialQuery: q)));
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +68,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                         const SizedBox(height: 12),
                         Text(_error!,
                             textAlign: TextAlign.center,
-                            style: const TextStyle(color: AppColors.neutral500)),
+                            style:
+                                const TextStyle(color: AppColors.neutral500)),
                         const SizedBox(height: 16),
                         FilledButton(
                             onPressed: _load, child: const Text('Retry')),
@@ -77,17 +78,20 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   ),
                 )
               : CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _hero()),
-                SliverToBoxAdapter(child: _statsBar()),
-                _rail("Editor's pick", 'Top rated gyms', _featured['topRated'] ?? []),
-                _rail('Closest to you', 'Gyms nearby', _featured['nearby'] ?? []),
-                _rail('Best value', 'Affordable gyms', _featured['affordable'] ?? []),
-                SliverToBoxAdapter(child: _whyChooseUs()),
-                SliverToBoxAdapter(child: _ownerCta()),
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              ],
-            ),
+                  slivers: [
+                    SliverToBoxAdapter(child: _hero()),
+                    SliverToBoxAdapter(child: _statsBar()),
+                    _rail("Editor's pick", 'Top rated gyms',
+                        _featured['topRated'] ?? []),
+                    _rail('Closest to you', 'Gyms nearby',
+                        _featured['nearby'] ?? []),
+                    _rail('Best value', 'Affordable gyms',
+                        _featured['affordable'] ?? []),
+                    SliverToBoxAdapter(child: _whyChooseUs()),
+                    SliverToBoxAdapter(child: _ownerCta()),
+                    const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  ],
+                ),
     );
   }
 
@@ -111,7 +115,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 decoration: BoxDecoration(
                     color: AppColors.primary500,
                     borderRadius: BorderRadius.circular(AppRadius.md)),
-                child: const Icon(Icons.fitness_center, color: Colors.white, size: 20),
+                child: const Icon(Icons.fitness_center,
+                    color: Colors.white, size: 20),
               ),
               const SizedBox(width: 10),
               const Text('gymma',
@@ -130,36 +135,48 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     height: 1.1,
                     letterSpacing: -1)),
             const SizedBox(height: 12),
-            const Text('Discover, compare and join the best gyms across Bengaluru.',
-                style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.5)),
+            const Text(
+                'Discover, compare and join the best gyms across Bengaluru.',
+                style: TextStyle(
+                    color: Colors.white70, fontSize: 15, height: 1.5)),
             const SizedBox(height: 22),
             GestureDetector(
               onTap: _toSearch,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(AppRadius.full)),
-                child: Row(children: const [
+                child: const Row(children: [
                   Icon(Icons.search, color: AppColors.neutral500),
                   SizedBox(width: 10),
                   Text('Search gyms by name, area…',
-                      style: TextStyle(color: AppColors.neutral500, fontSize: 15)),
+                      style:
+                          TextStyle(color: AppColors.neutral500, fontSize: 15)),
                 ]),
               ),
             ),
             const SizedBox(height: 14),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final area in const ['Koramangala', 'Indiranagar', 'Jayanagar', 'Malleshwaram'])
+              for (final area in const [
+                'Koramangala',
+                'Indiranagar',
+                'Jayanagar',
+                'Malleshwaram'
+              ])
                 GestureDetector(
                   onTap: () => _toSearch(area),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(AppRadius.full),
                       border: Border.all(color: Colors.white24),
                     ),
-                    child: Text(area, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                    child: Text(area,
+                        style: const TextStyle(
+                            color: Colors.white70, fontSize: 12)),
                   ),
                 ),
             ]),
@@ -188,7 +205,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
       );
 
   // ---- Featured rail ----
-  Widget _rail(String eyebrow, String title, List<GymSummary> gyms) => SliverToBoxAdapter(
+  Widget _rail(String eyebrow, String title, List<GymSummary> gyms) =>
+      SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: 28),
           child: Column(
@@ -214,7 +232,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       ],
                     ),
                   ),
-                  TextButton(onPressed: _toSearch, child: const Text('View all')),
+                  TextButton(
+                      onPressed: _toSearch, child: const Text('View all')),
                 ]),
               ),
               const SizedBox(height: 12),
@@ -225,7 +244,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: gyms.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 14),
-                  itemBuilder: (_, i) => SizedBox(width: 290, child: GymCard(gyms[i])),
+                  itemBuilder: (_, i) =>
+                      SizedBox(width: 290, child: GymCard(gyms[i])),
                 ),
               ),
             ],
@@ -236,12 +256,36 @@ class _ExploreScreenState extends State<ExploreScreen> {
   // ---- Why choose us ----
   Widget _whyChooseUs() {
     const items = [
-      (Icons.my_location, 'GPS-powered discovery', 'Find gyms near home, work, or anywhere. Filter by distance, price, and amenities.'),
-      (Icons.star_outline, 'Verified reviews & Gymma rating', 'Verified reviews from real members on cleanliness, trainers, equipment, and value — plus a Gymma rating that aggregates quality into one trusted score.'),
-      (Icons.verified_user_outlined, 'Transparent pricing', 'See membership plans upfront. No hidden fees, no guesswork — just clear info.'),
-      (Icons.groups_outlined, 'Detailed profiles', 'Trainer backgrounds, equipment, gallery, class schedules, and FAQs in one place.'),
-      (Icons.compare_arrows, 'Compare side by side', 'Shortlist gyms and compare them on the parameters that matter before deciding.'),
-      (Icons.workspace_premium_outlined, 'Curated lists', 'Browse Top Rated, Trending, Nearby, and Affordable collections, updated regularly.'),
+      (
+        Icons.my_location,
+        'GPS-powered discovery',
+        'Find gyms near home, work, or anywhere. Filter by distance, price, and amenities.'
+      ),
+      (
+        Icons.star_outline,
+        'Verified reviews & Gymma rating',
+        'Verified reviews from real members on cleanliness, trainers, equipment, and value — plus a Gymma rating that aggregates quality into one trusted score.'
+      ),
+      (
+        Icons.verified_user_outlined,
+        'Transparent pricing',
+        'See membership plans upfront. No hidden fees, no guesswork — just clear info.'
+      ),
+      (
+        Icons.groups_outlined,
+        'Detailed profiles',
+        'Trainer backgrounds, equipment, gallery, class schedules, and FAQs in one place.'
+      ),
+      (
+        Icons.compare_arrows,
+        'Compare side by side',
+        'Shortlist gyms and compare them on the parameters that matter before deciding.'
+      ),
+      (
+        Icons.workspace_premium_outlined,
+        'Curated lists',
+        'Browse Top Rated, Trending, Nearby, and Affordable collections, updated regularly.'
+      ),
     ];
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 36, 20, 12),
@@ -273,11 +317,14 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(it.$2,
-                            style: const TextStyle(fontWeight: FontWeight.w700)),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w700)),
                         const SizedBox(height: 2),
                         Text(it.$3,
                             style: const TextStyle(
-                                color: AppColors.neutral500, fontSize: 13, height: 1.4)),
+                                color: AppColors.neutral500,
+                                fontSize: 13,
+                                height: 1.4)),
                       ],
                     ),
                   ),
@@ -302,9 +349,12 @@ class _ExploreScreenState extends State<ExploreScreen> {
           children: [
             const Text('Own a gym?',
                 style: TextStyle(
-                    color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
-            const Text('List your gym on Gymma and reach thousands of members near you.',
+            const Text(
+                'List your gym on Gymma and reach thousands of members near you.',
                 style: TextStyle(color: Colors.white, height: 1.5)),
             const SizedBox(height: 16),
             FilledButton(
@@ -313,8 +363,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   foregroundColor: AppColors.primary700,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.md))),
-              onPressed: () => Navigator.of(context)
-                  .push(MaterialPageRoute(builder: (_) => const PartnerScreen())),
+              onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PartnerScreen())),
               child: const Text('Partner with us',
                   style: TextStyle(fontWeight: FontWeight.w700)),
             ),

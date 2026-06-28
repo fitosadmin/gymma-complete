@@ -41,19 +41,24 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     try {
       final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!ok && mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Could not open that link')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open that link')));
       }
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Could not open that link')));
+        ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open that link')));
       }
     }
   }
 
-  String _initials(String name) =>
-      name.trim().split(RegExp(r'\s+')).take(2).map((p) => p.isEmpty ? '' : p[0]).join().toUpperCase();
+  String _initials(String name) => name
+      .trim()
+      .split(RegExp(r'\s+'))
+      .take(2)
+      .map((p) => p.isEmpty ? '' : p[0])
+      .join()
+      .toUpperCase();
 
   Future<void> _openInquiry(GymDetail d) async {
     final sent = await showModalBottomSheet<bool>(
@@ -61,12 +66,15 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
       isScrollControlled: true,
       backgroundColor: AppColors.neutral0,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
-      builder: (_) => _InquirySheet(gymId: d.summary.id, gymName: d.summary.name),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (_) =>
+          _InquirySheet(gymId: d.summary.id, gymName: d.summary.name),
     );
     if (sent == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Inquiry sent — the gym will reach out soon.')),
+        const SnackBar(
+            content: Text('Inquiry sent — the gym will reach out soon.')),
       );
     }
   }
@@ -84,7 +92,8 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.cloud_off, size: 44, color: AppColors.neutral300),
+                  const Icon(Icons.cloud_off,
+                      size: 44, color: AppColors.neutral300),
                   const SizedBox(height: 12),
                   Text(_error!,
                       textAlign: TextAlign.center,
@@ -102,12 +111,15 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     final g = d.summary;
     final mapsUri = Uri.parse(
         'https://www.google.com/maps/search/?api=1&query=${g.lat},${g.lng}');
-    final waUri = Uri.parse('https://wa.me/${d.whatsapp.replaceAll(RegExp(r'\D'), '')}');
+    final waUri =
+        Uri.parse('https://wa.me/${d.whatsapp.replaceAll(RegExp(r'\D'), '')}');
     final telUri = Uri.parse('tel:${d.phone}');
 
     final chips = <Widget>[
-      if (g.isOpenNow) const GymBadge('Open Now', variant: BadgeVariant.success),
-      if (g.womenFriendly) const GymBadge('Women Friendly', variant: BadgeVariant.secondary),
+      if (g.isOpenNow)
+        const GymBadge('Open Now', variant: BadgeVariant.success),
+      if (g.womenFriendly)
+        const GymBadge('Women Friendly', variant: BadgeVariant.secondary),
       if (g.hasParking) const GymBadge('Parking'),
       if (g.amenities.contains('AC')) const GymBadge('AC'),
     ];
@@ -149,47 +161,66 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
                       height: 56,
                       width: 56,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                            colors: [AppColors.primary500, AppColors.primary600]),
+                        gradient: const LinearGradient(colors: [
+                          AppColors.primary500,
+                          AppColors.primary600
+                        ]),
                         borderRadius: BorderRadius.circular(AppRadius.lg),
                       ),
                       alignment: Alignment.center,
                       child: Text(_initials(g.name),
                           style: const TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+                              color: Colors.white,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18)),
                     ),
                     const Spacer(),
-                    Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                      Text(formatINR(g.pricePerMonth),
-                          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-                      const Text('per month',
-                          style: TextStyle(color: AppColors.neutral500, fontSize: 12)),
-                    ]),
+                    Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(formatINR(g.pricePerMonth),
+                              style: const TextStyle(
+                                  fontSize: 22, fontWeight: FontWeight.w800)),
+                          const Text('per month',
+                              style: TextStyle(
+                                  color: AppColors.neutral500, fontSize: 12)),
+                        ]),
                   ]),
                   const SizedBox(height: 14),
                   Text(g.name,
                       style: const TextStyle(
-                          fontSize: 24, fontWeight: FontWeight.w800, height: 1.2)),
+                          fontSize: 24,
+                          fontWeight: FontWeight.w800,
+                          height: 1.2)),
                   const SizedBox(height: 8),
-                  Wrap(spacing: 16, runSpacing: 6, crossAxisAlignment: WrapCrossAlignment.center, children: [
-                    Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Icon(Icons.star_rounded, size: 18, color: AppColors.rating),
-                      const SizedBox(width: 3),
-                      Text(g.rating.toStringAsFixed(1),
-                          style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text(' (${g.reviewCount})',
-                          style: const TextStyle(color: AppColors.neutral500)),
-                    ]),
-                    GestureDetector(
-                      onTap: () => _launch(mapsUri),
-                      child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        const Icon(Icons.location_on_outlined, size: 16, color: AppColors.neutral500),
-                        const SizedBox(width: 3),
-                        Text('${g.area}, ${g.city}',
-                            style: const TextStyle(color: AppColors.neutral600)),
+                  Wrap(
+                      spacing: 16,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Row(mainAxisSize: MainAxisSize.min, children: [
+                          const Icon(Icons.star_rounded,
+                              size: 18, color: AppColors.rating),
+                          const SizedBox(width: 3),
+                          Text(g.rating.toStringAsFixed(1),
+                              style:
+                                  const TextStyle(fontWeight: FontWeight.w700)),
+                          Text(' (${g.reviewCount})',
+                              style:
+                                  const TextStyle(color: AppColors.neutral500)),
+                        ]),
+                        GestureDetector(
+                          onTap: () => _launch(mapsUri),
+                          child: Row(mainAxisSize: MainAxisSize.min, children: [
+                            const Icon(Icons.location_on_outlined,
+                                size: 16, color: AppColors.neutral500),
+                            const SizedBox(width: 3),
+                            Text('${g.area}, ${g.city}',
+                                style: const TextStyle(
+                                    color: AppColors.neutral600)),
+                          ]),
+                        ),
                       ]),
-                    ),
-                  ]),
                   if (chips.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Wrap(spacing: 8, runSpacing: 8, children: chips),
@@ -197,240 +228,286 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
                   const Divider(height: 40),
 
                   // about
-                  _section('About', child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(d.description,
-                          style: const TextStyle(color: AppColors.neutral700, height: 1.6)),
-                      const SizedBox(height: 14),
-                      Wrap(spacing: 8, runSpacing: 8, children: [
-                        _pill('${d.yearsOperating} yrs operating'),
-                        ...d.certifications.map(_pill),
-                      ]),
-                    ],
-                  )),
+                  _section('About',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(d.description,
+                              style: const TextStyle(
+                                  color: AppColors.neutral700, height: 1.6)),
+                          const SizedBox(height: 14),
+                          Wrap(spacing: 8, runSpacing: 8, children: [
+                            _pill('${d.yearsOperating} yrs operating'),
+                            ...d.certifications.map(_pill),
+                          ]),
+                        ],
+                      )),
 
                   // gallery
                   if (d.gallery.isNotEmpty)
-                    _section('Gallery', child: SizedBox(
-                      height: 120,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: d.gallery.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: 10),
-                        itemBuilder: (_, i) {
-                          final item = d.gallery[i];
-                          final isUrl = item.startsWith('http');
-                          return ClipRRect(
-                            borderRadius: BorderRadius.circular(AppRadius.md),
-                            child: SizedBox(
-                              width: 160,
-                              child: isUrl
-                                  ? GymImage(name: g.name, src: item, aspectRatio: 4 / 3)
-                                  : Container(
-                                      color: AppColors.neutral100,
-                                      alignment: Alignment.center,
-                                      child: Text(item,
-                                          style: const TextStyle(
-                                              color: AppColors.neutral500, fontWeight: FontWeight.w600)),
-                                    ),
-                            ),
-                          );
-                        },
-                      ),
-                    )),
+                    _section('Gallery',
+                        child: SizedBox(
+                          height: 120,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: d.gallery.length,
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(width: 10),
+                            itemBuilder: (_, i) {
+                              final item = d.gallery[i];
+                              final isUrl = item.startsWith('http');
+                              return ClipRRect(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.md),
+                                child: SizedBox(
+                                  width: 160,
+                                  child: isUrl
+                                      ? GymImage(
+                                          name: g.name,
+                                          src: item,
+                                          aspectRatio: 4 / 3)
+                                      : Container(
+                                          color: AppColors.neutral100,
+                                          alignment: Alignment.center,
+                                          child: Text(item,
+                                              style: const TextStyle(
+                                                  color: AppColors.neutral500,
+                                                  fontWeight: FontWeight.w600)),
+                                        ),
+                                ),
+                              );
+                            },
+                          ),
+                        )),
 
                   // trainers
-                  _section('Trainers', child: Column(
-                    children: d.trainers
-                        .map((t) => Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                border: Border.all(color: AppColors.neutral200),
-                              ),
-                              child: Row(children: [
-                                CircleAvatar(
-                                  radius: 22,
-                                  backgroundColor: AppColors.primary50,
-                                  child: Text(_initials(t.name),
-                                      style: const TextStyle(
-                                          color: AppColors.primary700, fontWeight: FontWeight.w700)),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(t.name,
-                                          style: const TextStyle(fontWeight: FontWeight.w700)),
-                                      Text(t.specialization,
-                                          style: const TextStyle(
-                                              color: AppColors.neutral500, fontSize: 13)),
-                                      const SizedBox(height: 2),
-                                      Text(
-                                          '${t.yearsExperience} yrs · ${t.languages.join(", ")}',
-                                          style: const TextStyle(
-                                              color: AppColors.neutral400, fontSize: 12)),
-                                    ],
+                  _section('Trainers',
+                      child: Column(
+                        children: d.trainers
+                            .map((t) => Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(14),
+                                  decoration: BoxDecoration(
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.md),
+                                    border:
+                                        Border.all(color: AppColors.neutral200),
                                   ),
-                                ),
-                                Text('${formatINR(t.pricePerSession)}/session',
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600, fontSize: 12)),
-                              ]),
-                            ))
-                        .toList(),
-                  )),
+                                  child: Row(children: [
+                                    CircleAvatar(
+                                      radius: 22,
+                                      backgroundColor: AppColors.primary50,
+                                      child: Text(_initials(t.name),
+                                          style: const TextStyle(
+                                              color: AppColors.primary700,
+                                              fontWeight: FontWeight.w700)),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(t.name,
+                                              style: const TextStyle(
+                                                  fontWeight: FontWeight.w700)),
+                                          Text(t.specialization,
+                                              style: const TextStyle(
+                                                  color: AppColors.neutral500,
+                                                  fontSize: 13)),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                              '${t.yearsExperience} yrs · ${t.languages.join(", ")}',
+                                              style: const TextStyle(
+                                                  color: AppColors.neutral400,
+                                                  fontSize: 12)),
+                                        ],
+                                      ),
+                                    ),
+                                    Text(
+                                        '${formatINR(t.pricePerSession)}/session',
+                                        style: const TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12)),
+                                  ]),
+                                ))
+                            .toList(),
+                      )),
 
                   // plans
-                  _section('Membership Plans', child: Column(
-                    children: d.plans
-                        .map((p) => Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                border: Border.all(
-                                    color: p.recommended
-                                        ? AppColors.primary500
-                                        : AppColors.neutral200,
-                                    width: p.recommended ? 1.6 : 1),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(children: [
-                                    Text(p.name,
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w700, fontSize: 16)),
-                                    if (p.recommended) ...[
-                                      const SizedBox(width: 8),
-                                      const GymBadge('Best value',
-                                          variant: BadgeVariant.secondary),
+                  _section('Membership Plans',
+                      child: Column(
+                        children: d.plans
+                            .map((p) => Container(
+                                  margin: const EdgeInsets.only(bottom: 10),
+                                  padding: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.md),
+                                    border: Border.all(
+                                        color: p.recommended
+                                            ? AppColors.primary500
+                                            : AppColors.neutral200,
+                                        width: p.recommended ? 1.6 : 1),
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(children: [
+                                        Text(p.name,
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 16)),
+                                        if (p.recommended) ...[
+                                          const SizedBox(width: 8),
+                                          const GymBadge('Best value',
+                                              variant: BadgeVariant.secondary),
+                                        ],
+                                        const Spacer(),
+                                        Text(formatINR(p.price),
+                                            style: const TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 16)),
+                                      ]),
+                                      const SizedBox(height: 8),
+                                      ...p.benefits.map((b) => Padding(
+                                            padding:
+                                                const EdgeInsets.only(top: 4),
+                                            child: Row(children: [
+                                              const Icon(Icons.check,
+                                                  size: 16,
+                                                  color:
+                                                      AppColors.secondary500),
+                                              const SizedBox(width: 6),
+                                              Expanded(
+                                                  child: Text(b,
+                                                      style: const TextStyle(
+                                                          color: AppColors
+                                                              .neutral600,
+                                                          fontSize: 13))),
+                                            ]),
+                                          )),
                                     ],
-                                    const Spacer(),
-                                    Text(formatINR(p.price),
-                                        style: const TextStyle(
-                                            fontWeight: FontWeight.w800, fontSize: 16)),
-                                  ]),
-                                  const SizedBox(height: 8),
-                                  ...p.benefits.map((b) => Padding(
-                                        padding: const EdgeInsets.only(top: 4),
-                                        child: Row(children: [
-                                          const Icon(Icons.check,
-                                              size: 16, color: AppColors.secondary500),
-                                          const SizedBox(width: 6),
-                                          Expanded(
-                                              child: Text(b,
-                                                  style: const TextStyle(
-                                                      color: AppColors.neutral600, fontSize: 13))),
-                                        ]),
-                                      )),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                  )),
+                                  ),
+                                ))
+                            .toList(),
+                      )),
 
                   // facilities
-                  _section('Facilities', child: Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: g.amenities
-                        .map((a) => Container(
-                              width: 96,
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(AppRadius.md),
-                                border: Border.all(color: AppColors.neutral200),
-                              ),
-                              child: Column(children: [
-                                Icon(amenityIcon(a), color: AppColors.neutral700),
-                                const SizedBox(height: 6),
-                                Text(a,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(fontSize: 11)),
-                              ]),
-                            ))
-                        .toList(),
-                  )),
+                  _section('Facilities',
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: g.amenities
+                            .map((a) => Container(
+                                  width: 96,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 14),
+                                  decoration: BoxDecoration(
+                                    borderRadius:
+                                        BorderRadius.circular(AppRadius.md),
+                                    border:
+                                        Border.all(color: AppColors.neutral200),
+                                  ),
+                                  child: Column(children: [
+                                    Icon(amenityIcon(a),
+                                        color: AppColors.neutral700),
+                                    const SizedBox(height: 6),
+                                    Text(a,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 11)),
+                                  ]),
+                                ))
+                            .toList(),
+                      )),
 
                   // classes
-                  _section('Classes', child: Column(
-                    children: d.classes
-                        .map((c) => ListTile(
-                              contentPadding: EdgeInsets.zero,
-                              leading: const Icon(Icons.event_available_outlined),
-                              title: Text(c.name,
-                                  style: const TextStyle(fontWeight: FontWeight.w600)),
-                              subtitle: Text('${c.schedule} · ${c.durationMin} min'),
-                              trailing: Text(c.trainerName,
-                                  style: const TextStyle(
-                                      color: AppColors.neutral500, fontSize: 12)),
-                            ))
-                        .toList(),
-                  )),
+                  _section('Classes',
+                      child: Column(
+                        children: d.classes
+                            .map((c) => ListTile(
+                                  contentPadding: EdgeInsets.zero,
+                                  leading: const Icon(
+                                      Icons.event_available_outlined),
+                                  title: Text(c.name,
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.w600)),
+                                  subtitle: Text(
+                                      '${c.schedule} · ${c.durationMin} min'),
+                                  trailing: Text(c.trainerName,
+                                      style: const TextStyle(
+                                          color: AppColors.neutral500,
+                                          fontSize: 12)),
+                                ))
+                            .toList(),
+                      )),
 
                   // reviews + scores
-                  _section('Reviews', child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _scoresCard(d.scores),
-                      const SizedBox(height: 12),
-                      ...d.reviews.take(6).map((r) => Container(
-                            margin: const EdgeInsets.only(bottom: 12),
-                            padding: const EdgeInsets.all(14),
-                            decoration: BoxDecoration(
-                              color: AppColors.neutral50,
-                              borderRadius: BorderRadius.circular(AppRadius.md),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(children: [
-                                  StarRating(r.rating, size: 14),
-                                  const Spacer(),
-                                  const Text('Verified Member',
-                                      style: TextStyle(
-                                          color: AppColors.neutral400, fontSize: 11)),
-                                ]),
-                                const SizedBox(height: 8),
-                                Text(r.body,
-                                    style: const TextStyle(
-                                        color: AppColors.neutral700, height: 1.5)),
-                              ],
-                            ),
-                          )),
-                    ],
-                  )),
+                  _section('Reviews',
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _scoresCard(d.scores),
+                          const SizedBox(height: 12),
+                          ...d.reviews.take(6).map((r) => Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: AppColors.neutral50,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.md),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(children: [
+                                      StarRating(r.rating, size: 14),
+                                      const Spacer(),
+                                      const Text('Verified Member',
+                                          style: TextStyle(
+                                              color: AppColors.neutral400,
+                                              fontSize: 11)),
+                                    ]),
+                                    const SizedBox(height: 8),
+                                    Text(r.body,
+                                        style: const TextStyle(
+                                            color: AppColors.neutral700,
+                                            height: 1.5)),
+                                  ],
+                                ),
+                              )),
+                        ],
+                      )),
 
                   // faqs
-                  _section('FAQs', child: Column(
-                    children: d.faqs
-                        .map((f) => Theme(
-                              data: Theme.of(context)
-                                  .copyWith(dividerColor: Colors.transparent),
-                              child: ExpansionTile(
-                                tilePadding: EdgeInsets.zero,
-                                title: Text(f.question,
-                                    style: const TextStyle(
-                                        fontWeight: FontWeight.w600, fontSize: 15)),
-                                childrenPadding:
-                                    const EdgeInsets.only(bottom: 12),
-                                children: [
-                                  Align(
-                                    alignment: Alignment.centerLeft,
-                                    child: Text(f.answer,
+                  _section('FAQs',
+                      child: Column(
+                        children: d.faqs
+                            .map((f) => Theme(
+                                  data: Theme.of(context).copyWith(
+                                      dividerColor: Colors.transparent),
+                                  child: ExpansionTile(
+                                    tilePadding: EdgeInsets.zero,
+                                    title: Text(f.question,
                                         style: const TextStyle(
-                                            color: AppColors.neutral600, height: 1.5)),
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15)),
+                                    childrenPadding:
+                                        const EdgeInsets.only(bottom: 12),
+                                    children: [
+                                      Align(
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(f.answer,
+                                            style: const TextStyle(
+                                                color: AppColors.neutral600,
+                                                height: 1.5)),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                            ))
-                        .toList(),
-                  )),
+                                ))
+                            .toList(),
+                      )),
                 ],
               ),
             ),
@@ -450,7 +527,8 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
             const SizedBox(width: 8),
             _circleAction(Icons.chat, AppColors.green, () => _launch(waUri)),
             const SizedBox(width: 8),
-            _circleAction(Icons.directions, AppColors.neutral700, () => _launch(mapsUri)),
+            _circleAction(
+                Icons.directions, AppColors.neutral700, () => _launch(mapsUri)),
             const SizedBox(width: 10),
             Expanded(
               child: FilledButton(
@@ -476,7 +554,8 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(title,
-                style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                style:
+                    const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
             const SizedBox(height: 14),
             child,
             const Divider(height: 36),
@@ -516,7 +595,8 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
                     SizedBox(
                         width: 92,
                         child: Text(r.$1,
-                            style: const TextStyle(fontSize: 13, color: AppColors.neutral600))),
+                            style: const TextStyle(
+                                fontSize: 13, color: AppColors.neutral600))),
                     Expanded(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(AppRadius.full),
@@ -539,7 +619,8 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     );
   }
 
-  Widget _circleAction(IconData icon, Color color, VoidCallback onTap) => Material(
+  Widget _circleAction(IconData icon, Color color, VoidCallback onTap) =>
+      Material(
         color: color.withOpacity(0.08),
         shape: const CircleBorder(),
         child: InkWell(
@@ -624,8 +705,9 @@ class _InquirySheetState extends State<_InquirySheet> {
                       borderRadius: BorderRadius.circular(2))),
             ),
             const SizedBox(height: 16),
-            Text('Send an inquiry',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+            const Text('Send an inquiry',
+                style:
+                    TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 4),
             Text(widget.gymName,
                 style: const TextStyle(color: AppColors.neutral500)),
@@ -643,17 +725,17 @@ class _InquirySheetState extends State<_InquirySheet> {
               keyboardType: TextInputType.phone,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(labelText: 'Phone number'),
-              validator: (v) => (v == null || !RegExp(r'^[6-9]\d{9}$').hasMatch(v.trim()))
-                  ? 'Enter a valid 10-digit mobile number'
-                  : null,
+              validator: (v) =>
+                  (v == null || !RegExp(r'^[6-9]\d{9}$').hasMatch(v.trim()))
+                      ? 'Enter a valid 10-digit mobile number'
+                      : null,
             ),
             const SizedBox(height: 12),
             TextFormField(
               controller: _message,
               maxLines: 3,
               decoration: const InputDecoration(
-                  labelText: 'Message (optional)',
-                  alignLabelWithHint: true),
+                  labelText: 'Message (optional)', alignLabelWithHint: true),
             ),
             if (_error != null) ...[
               const SizedBox(height: 12),

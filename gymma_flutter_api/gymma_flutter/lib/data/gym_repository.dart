@@ -49,7 +49,8 @@ class GymRepository {
 
   /// GET /gyms/:slug/reviews
   Future<List<Review>> getReviews(String slug) async {
-    final data = await _api.getData('/gyms/$slug/reviews', query: {'limit': 20});
+    final data =
+        await _api.getData('/gyms/$slug/reviews', query: {'limit': 20});
     return (data as List)
         .map((e) => ReviewApi.fromApi(e as Map<String, dynamic>))
         .toList();
@@ -67,7 +68,8 @@ class GymRepository {
       'gymId': gymId,
       'name': name,
       'phone': phone,
-      if (message != null && message.trim().isNotEmpty) 'message': message.trim(),
+      if (message != null && message.trim().isNotEmpty)
+        'message': message.trim(),
       if (planInterest != null && planInterest.trim().isNotEmpty)
         'planInterest': planInterest.trim(),
       'sourcePage': 'mobile-app',
@@ -104,8 +106,9 @@ class GymRepository {
       'nearby': by((a, b) => (a.distanceKm ?? 99).compareTo(b.distanceKm ?? 99))
           .take(3)
           .toList(),
-      'affordable':
-          by((a, b) => a.pricePerMonth.compareTo(b.pricePerMonth)).take(3).toList(),
+      'affordable': by((a, b) => a.pricePerMonth.compareTo(b.pricePerMonth))
+          .take(3)
+          .toList(),
     };
   }
 

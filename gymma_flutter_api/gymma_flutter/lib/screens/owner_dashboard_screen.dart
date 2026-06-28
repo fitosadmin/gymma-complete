@@ -48,24 +48,28 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(
         backgroundColor: AppColors.neutral50,
-        title: const Text('Owner dashboard', style: TextStyle(fontWeight: FontWeight.w700)),
+        title: const Text('Owner dashboard',
+            style: TextStyle(fontWeight: FontWeight.w700)),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // gym header
-          Row(children: [
+          const Row(children: [
             Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: const [
-                  Text('Iron Temple Fitness',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
-                  SizedBox(width: 8),
-                  _LiveDot(),
-                ]),
-                const Text('Indiranagar, Bengaluru',
-                    style: TextStyle(color: AppColors.neutral500)),
-              ]),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Text('Iron Temple Fitness',
+                          style: TextStyle(
+                              fontSize: 20, fontWeight: FontWeight.w800)),
+                      SizedBox(width: 8),
+                      _LiveDot(),
+                    ]),
+                    Text('Indiranagar, Bengaluru',
+                        style: TextStyle(color: AppColors.neutral500)),
+                  ]),
             ),
           ]),
           const SizedBox(height: 16),
@@ -77,9 +81,11 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               borderRadius: BorderRadius.circular(AppRadius.lg),
               border: Border.all(color: AppColors.neutral200),
             ),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: const [
-                Text('Profile completion', style: TextStyle(fontWeight: FontWeight.w600)),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Row(children: [
+                Text('Profile completion',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
                 Spacer(),
                 Text('80%', style: TextStyle(fontWeight: FontWeight.w800)),
               ]),
@@ -164,13 +170,16 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                       backgroundColor: AppColors.neutral100,
                       child: Text(_inquiries[i].$1[0],
                           style: const TextStyle(
-                              color: AppColors.neutral700, fontWeight: FontWeight.w700)),
+                              color: AppColors.neutral700,
+                              fontWeight: FontWeight.w700)),
                     ),
                     title: Text(_inquiries[i].$1,
                         style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle: Text('${_inquiries[i].$2} plan · ${_inquiries[i].$3}'),
+                    subtitle:
+                        Text('${_inquiries[i].$2} plan · ${_inquiries[i].$3}'),
                     trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                           color: _statusBg(_inquiries[i].$4),
                           borderRadius: BorderRadius.circular(AppRadius.full)),
@@ -196,7 +205,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               hintText: 'Share an update with your members…',
               filled: true,
               fillColor: AppColors.neutral0,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+              border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppRadius.md)),
             ),
           ),
           const SizedBox(height: 10),
@@ -211,8 +221,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
               onPressed: () {
                 if (_announce.text.trim().isEmpty) return;
                 _announce.clear();
-                ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Announcement sent to members')));
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text('Announcement sent to members')));
               },
               child: const Text('Send to members',
                   style: TextStyle(fontWeight: FontWeight.w700)),
@@ -230,7 +240,8 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
             foregroundColor: AppColors.neutral700,
             side: const BorderSide(color: AppColors.neutral200),
             padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md)),
           ),
           onPressed: () => ScaffoldMessenger.of(context)
               .showSnackBar(SnackBar(content: Text('$label (demo)'))),
@@ -249,13 +260,16 @@ class _LiveDot extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
         decoration: BoxDecoration(
-            color: AppColors.secondary50, borderRadius: BorderRadius.circular(AppRadius.full)),
-        child: Row(mainAxisSize: MainAxisSize.min, children: const [
+            color: AppColors.secondary50,
+            borderRadius: BorderRadius.circular(AppRadius.full)),
+        child: const Row(mainAxisSize: MainAxisSize.min, children: [
           CircleAvatar(radius: 3, backgroundColor: AppColors.secondary500),
           SizedBox(width: 5),
           Text('Live',
               style: TextStyle(
-                  color: AppColors.secondary700, fontSize: 11, fontWeight: FontWeight.w600)),
+                  color: AppColors.secondary700,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600)),
         ]),
       );
 }

@@ -20,14 +20,19 @@ class _GymMapState extends State<GymMap> {
 
   LatLng get _center {
     if (widget.gyms.isEmpty) return const LatLng(12.9716, 77.5946); // Bengaluru
-    final lat = widget.gyms.map((g) => g.lat).reduce((a, b) => a + b) / widget.gyms.length;
-    final lng = widget.gyms.map((g) => g.lng).reduce((a, b) => a + b) / widget.gyms.length;
+    final lat = widget.gyms.map((g) => g.lat).reduce((a, b) => a + b) /
+        widget.gyms.length;
+    final lng = widget.gyms.map((g) => g.lng).reduce((a, b) => a + b) /
+        widget.gyms.length;
     return LatLng(lat, lng);
   }
 
   @override
   Widget build(BuildContext context) {
-    final selected = widget.gyms.where((g) => g.id == _selectedId).cast<GymSummary?>().firstOrNull;
+    final selected = widget.gyms
+        .where((g) => g.id == _selectedId)
+        .cast<GymSummary?>()
+        .firstOrNull;
     return ClipRRect(
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: Stack(
@@ -51,7 +56,9 @@ class _GymMapState extends State<GymMap> {
                         child: Icon(
                           Icons.location_on,
                           size: g.id == _selectedId ? 40 : 32,
-                          color: g.id == _selectedId ? AppColors.primary600 : AppColors.ink,
+                          color: g.id == _selectedId
+                              ? AppColors.primary600
+                              : AppColors.ink,
                         ),
                       ),
                     ),
@@ -91,8 +98,8 @@ class _MapCard extends StatelessWidget {
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: InkWell(
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        onTap: () => Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => GymDetailScreen(slug: gym.slug))),
+        onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => GymDetailScreen(slug: gym.slug))),
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Row(
@@ -105,16 +112,19 @@ class _MapCard extends StatelessWidget {
                     Text(gym.name,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                        style: const TextStyle(
+                            fontWeight: FontWeight.w700, fontSize: 15)),
                     const SizedBox(height: 4),
                     Text(
                       '★ ${gym.rating.toStringAsFixed(1)} · ${gym.area} · ${formatINR(gym.pricePerMonth)}/mo',
-                      style: const TextStyle(color: AppColors.neutral500, fontSize: 13),
+                      style: const TextStyle(
+                          color: AppColors.neutral500, fontSize: 13),
                     ),
                   ],
                 ),
               ),
-              IconButton(onPressed: onClose, icon: const Icon(Icons.close, size: 18)),
+              IconButton(
+                  onPressed: onClose, icon: const Icon(Icons.close, size: 18)),
             ],
           ),
         ),

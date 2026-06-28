@@ -26,8 +26,8 @@ const String kApiBaseUrl =
 /// =============================================================================
 const String _fallbackImageBaseUrl = 'https://gymma-seven.vercel.app';
 
-const String kImageBaseUrl =
-    String.fromEnvironment('IMAGE_BASE_URL', defaultValue: _fallbackImageBaseUrl);
+const String kImageBaseUrl = String.fromEnvironment('IMAGE_BASE_URL',
+    defaultValue: _fallbackImageBaseUrl);
 
 /// Turns a possibly-relative image path into an absolute URL the app can load.
 /// Absolute http(s) URLs (or non-path placeholder labels) are returned as-is.
@@ -125,7 +125,9 @@ class ApiClient {
           statusCode: res.statusCode);
     }
 
-    if (res.statusCode >= 200 && res.statusCode < 300 && json['success'] == true) {
+    if (res.statusCode >= 200 &&
+        res.statusCode < 300 &&
+        json['success'] == true) {
       return json['data'];
     }
 

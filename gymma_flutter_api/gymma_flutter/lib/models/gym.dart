@@ -53,7 +53,9 @@ class GymSummary {
         rating: (j['rating'] as num).toDouble(),
         reviewCount: (j['reviewCount'] as num).toInt(),
         pricePerMonth: (j['pricePerMonth'] as num).toInt(),
-        distanceKm: j['distanceKm'] == null ? null : (j['distanceKm'] as num).toDouble(),
+        distanceKm: j['distanceKm'] == null
+            ? null
+            : (j['distanceKm'] as num).toDouble(),
         amenities: (j['amenities'] as List).cast<String>(),
         isOpenNow: j['isOpenNow'] as bool,
         isPremium: j['isPremium'] as bool,
@@ -70,14 +72,16 @@ class GymSummary {
         id: j['id'] as String,
         slug: j['slug'] as String,
         name: j['name'] as String,
-        coverImage: resolveImageUrl((j['coverImageUrl'] ?? j['coverImage']) as String?),
+        coverImage:
+            resolveImageUrl((j['coverImageUrl'] ?? j['coverImage']) as String?),
         area: (j['area'] as String?) ?? '',
         city: (j['city'] as String?) ?? 'Bengaluru',
         rating: ((j['rating'] as num?) ?? 0).toDouble(),
         reviewCount: ((j['reviewCount'] as num?) ?? 0).toInt(),
         pricePerMonth: ((j['pricePerMonth'] as num?) ?? 0).toInt(),
-        distanceKm:
-            j['distanceKm'] == null ? null : (j['distanceKm'] as num).toDouble(),
+        distanceKm: j['distanceKm'] == null
+            ? null
+            : (j['distanceKm'] as num).toDouble(),
         amenities: (j['amenities'] as List?)?.cast<String>() ?? const [],
         // backend may send null ("unknown") — treat as open so it isn't hidden.
         isOpenNow: (j['isOpenNow'] as bool?) ?? true,
@@ -290,8 +294,8 @@ extension ReviewApi on Review {
         id: (j['id'] ?? '').toString(),
         body: (j['body'] as String?) ?? '',
         rating: ((j['rating'] as num?) ?? 0).toDouble(),
-        createdAt:
-            DateTime.tryParse((j['createdAt'] ?? '').toString()) ?? DateTime.now(),
+        createdAt: DateTime.tryParse((j['createdAt'] ?? '').toString()) ??
+            DateTime.now(),
         helpfulCount: ((j['helpfulCount'] as num?) ?? 0).toInt(),
       );
 }
@@ -317,7 +321,8 @@ extension GymDetailApi on GymDetail {
   }) {
     final summary = GymSummary.fromApi(j);
     final gallery = (j['gallery'] as List?)
-            ?.map((e) => resolveImageUrl((e is Map ? e['url'] : e)?.toString()) ?? '')
+            ?.map((e) =>
+                resolveImageUrl((e is Map ? e['url'] : e)?.toString()) ?? '')
             .where((u) => u.isNotEmpty)
             .toList() ??
         const <String>[];
@@ -325,7 +330,8 @@ extension GymDetailApi on GymDetail {
       summary: summary,
       description: (j['description'] as String?) ?? '',
       yearsOperating: ((j['yearsOperating'] as num?) ?? 0).toInt(),
-      certifications: (j['certifications'] as List?)?.cast<String>() ?? const [],
+      certifications:
+          (j['certifications'] as List?)?.cast<String>() ?? const [],
       scores: CategoryScoresApi.fromApi(
           j['scores'] as Map<String, dynamic>?, summary.rating),
       trainers: (j['trainers'] as List?)

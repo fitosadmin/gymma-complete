@@ -37,7 +37,10 @@ class GymImage extends StatelessWidget {
           child: Text(
             _initials,
             style: const TextStyle(
-                color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: 1),
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1),
           ),
         ),
       );
@@ -53,7 +56,9 @@ class GymImage extends StatelessWidget {
             errorWidget: (_, __, ___) => _fallback(),
           );
     if (radius != null) img = ClipRRect(borderRadius: radius!, child: img);
-    if (height != null) return SizedBox(height: height, width: double.infinity, child: img);
+    if (height != null) {
+      return SizedBox(height: height, width: double.infinity, child: img);
+    }
     return AspectRatio(aspectRatio: aspectRatio, child: img);
   }
 }
@@ -62,7 +67,8 @@ class StarRating extends StatelessWidget {
   final double rating;
   final double size;
   final bool showValue;
-  const StarRating(this.rating, {super.key, this.size = 16, this.showValue = false});
+  const StarRating(this.rating,
+      {super.key, this.size = 16, this.showValue = false});
 
   @override
   Widget build(BuildContext context) {
@@ -73,14 +79,17 @@ class StarRating extends StatelessWidget {
           Icon(
             rating >= i
                 ? Icons.star_rounded
-                : (rating >= i - 0.5 ? Icons.star_half_rounded : Icons.star_outline_rounded),
+                : (rating >= i - 0.5
+                    ? Icons.star_half_rounded
+                    : Icons.star_outline_rounded),
             size: size,
             color: AppColors.rating,
           ),
         if (showValue) ...[
           const SizedBox(width: 6),
           Text(rating.toStringAsFixed(1),
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: size - 2)),
+              style:
+                  TextStyle(fontWeight: FontWeight.w600, fontSize: size - 2)),
         ]
       ],
     );
@@ -113,9 +122,11 @@ class GymBadge extends StatelessWidget {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(AppRadius.full)),
+      decoration: BoxDecoration(
+          color: bg, borderRadius: BorderRadius.circular(AppRadius.full)),
       child: Text(label,
-          style: TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
+          style:
+              TextStyle(color: fg, fontSize: 12, fontWeight: FontWeight.w600)),
     );
   }
 }

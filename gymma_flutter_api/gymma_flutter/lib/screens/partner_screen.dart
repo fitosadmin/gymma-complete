@@ -66,7 +66,8 @@ class _PartnerScreenState extends State<PartnerScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           const Text('List your gym on Gymma',
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, height: 1.2)),
+              style: TextStyle(
+                  fontSize: 24, fontWeight: FontWeight.w800, height: 1.2)),
           const SizedBox(height: 8),
           const Text(
               'Reach thousands of members searching for gyms near them. Tell us about your gym and our team will reach out to set up your profile.',
@@ -85,15 +86,17 @@ class _PartnerScreenState extends State<PartnerScreen> {
                           : null),
               _field(_email, 'Email', 'Enter your email',
                   keyboard: TextInputType.emailAddress,
-                  validator: (v) =>
-                      (v == null || !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim()))
-                          ? 'Enter a valid email'
-                          : null),
+                  validator: (v) => (v == null ||
+                          !RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+                              .hasMatch(v.trim()))
+                      ? 'Enter a valid email'
+                      : null),
               _field(_area, 'Area / locality', 'Enter your area'),
               if (_error != null) ...[
                 Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                  child:
+                      Text(_error!, style: const TextStyle(color: Colors.red)),
                 ),
                 const SizedBox(height: 8),
               ],
@@ -114,7 +117,8 @@ class _PartnerScreenState extends State<PartnerScreen> {
                           child: CircularProgressIndicator(
                               strokeWidth: 2, color: Colors.white))
                       : const Text('Request a demo',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 15)),
                 ),
               ),
             ]),
@@ -133,7 +137,8 @@ class _PartnerScreenState extends State<PartnerScreen> {
               (v) => (v == null || v.trim().isEmpty) ? error : null,
           decoration: InputDecoration(
             labelText: label,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md)),
           ),
         ),
       );
@@ -149,11 +154,13 @@ class _PartnerScreenState extends State<PartnerScreen> {
                 width: 72,
                 decoration: const BoxDecoration(
                     color: AppColors.secondary50, shape: BoxShape.circle),
-                child: const Icon(Icons.check_rounded, color: AppColors.secondary700, size: 40),
+                child: const Icon(Icons.check_rounded,
+                    color: AppColors.secondary700, size: 40),
               ),
               const SizedBox(height: 20),
               Text("Thanks, ${_name.text.trim().split(' ').first}!",
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.w800)),
               const SizedBox(height: 8),
               const Text(
                   'Your request has been received. Our team will reach out shortly to get your gym listed.',
@@ -161,8 +168,8 @@ class _PartnerScreenState extends State<PartnerScreen> {
                   style: TextStyle(color: AppColors.neutral500, height: 1.5)),
               const SizedBox(height: 24),
               OutlinedButton(
-                onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const OwnerDashboardScreen())),
+                onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const OwnerDashboardScreen())),
                 child: const Text('Preview owner dashboard'),
               ),
             ],
