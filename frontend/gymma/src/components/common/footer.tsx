@@ -6,8 +6,8 @@ const COLUMNS: Record<string, { label: string; href: string }[]> = {
   Discover: [
     { label: "Find a gym", href: "/search" },
     { label: "Compare gyms", href: "/compare" },
-    { label: "Top rated", href: "/search?sort=rating" },
-    { label: "Budget gyms", href: "/search?sort=price_asc" },
+    { label: "Top rated", href: "/explore?sort=rating" },
+    { label: "Budget gyms", href: "/explore?sort=price_asc" },
   ],
   Company: [
     { label: "About", href: "/about" },
@@ -16,7 +16,6 @@ const COLUMNS: Record<string, { label: string; href: string }[]> = {
   Legal: [
     { label: "Privacy", href: "/privacy" },
     { label: "Terms", href: "/terms" },
-    { label: "Cookies", href: "#" },
   ],
 };
 

@@ -14,7 +14,7 @@ export default function TermsPage() {
         <p className="mt-4 text-base text-neutral-500">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
       </div>
 
-      <div className="prose prose-neutral max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary-600">
+      <div className="text-base [&_a]:text-primary-600 [&_a]:underline [&_h2]:mb-4 [&_h2]:mt-12 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:text-neutral-900 [&_li]:mb-2 [&_li]:text-neutral-600 [&_p]:mb-6 [&_p]:leading-relaxed [&_p]:text-neutral-600 [&_strong]:font-semibold [&_strong]:text-neutral-900 [&_ul]:mb-6 [&_ul]:list-disc [&_ul]:pl-5">
         <h2>1. Acceptance of Terms</h2>
         <p>
           By accessing or using the Gymma platform, website, and associated services, you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the Service.

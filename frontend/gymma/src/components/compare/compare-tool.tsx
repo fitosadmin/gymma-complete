@@ -111,7 +111,7 @@ export function CompareTool({ gyms }: { gyms: GymDetail[] }) {
           ))}
 
           {/* Rating */}
-          <div className={label}>Rating</div>
+          <div className={label}>Gymma rating</div>
           {selected.map((g) => (
             <div key={g.id} className={cn(cell, "border-l")}>
               <span className={cn("inline-flex items-center gap-1 font-semibold text-neutral-900", g.rating === maxRating && "rounded-md bg-secondary-50 px-1.5 py-0.5 text-secondary-700")}>
@@ -135,8 +135,6 @@ export function CompareTool({ gyms }: { gyms: GymDetail[] }) {
 
           {/* Booleans */}
           {([
-            ["Open now", (g: GymDetail) => g.isOpenNow],
-            ["Premium", (g: GymDetail) => g.isPremium],
             ["Women friendly", (g: GymDetail) => g.womenFriendly],
             ["Parking", (g: GymDetail) => g.hasParking],
           ] as const).map(([rowLabel, get]) => (

@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         <p className="mt-4 text-base text-neutral-500">Last updated: {new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
       </div>
 
-      <div className="prose prose-neutral max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-a:text-primary-600">
+      <div className="text-base [&_a]:text-primary-600 [&_a]:underline [&_h2]:mb-4 [&_h2]:mt-12 [&_h2]:text-2xl [&_h2]:font-bold [&_h2]:tracking-tight [&_h2]:text-neutral-900 [&_li]:mb-2 [&_li]:text-neutral-600 [&_p]:mb-6 [&_p]:leading-relaxed [&_p]:text-neutral-600 [&_strong]:font-semibold [&_strong]:text-neutral-900 [&_ul]:mb-6 [&_ul]:list-disc [&_ul]:pl-5">
         <p>
           At Gymma, accessible from our website and mobile applications, one of our main priorities is the privacy of our visitors. This Privacy Policy document contains types of information that is collected and recorded by Gymma and how we use it.
         </p>
