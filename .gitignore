@@ -1,0 +1,12 @@
+node_modules/
+.next/
+dist/
+build/
+.env
+.env.*
+.DS_Store
+gymma_flutter_api/gymma_flutter/build/
+gymma_flutter_api/gymma_flutter/.dart_tool/
+gymma_flutter_api/gymma_flutter/linux/flutter/ephemeral/
+gymma_flutter_api/gymma_flutter/windows/flutter/ephemeral/
+gymma_flutter_api/gymma_flutter/macos/Flutter/ephemeral/

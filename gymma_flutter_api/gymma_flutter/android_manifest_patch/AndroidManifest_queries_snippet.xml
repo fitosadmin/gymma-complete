@@ -1,0 +1,20 @@
+<!-- Paste this <queries> block inside <manifest>, as a direct child
+     (right BEFORE the <application> tag) in:
+     android/app/src/main/AndroidManifest.xml
+     This is required on Android 11+ so the Call / WhatsApp / Directions
+     buttons (url_launcher) can resolve tel:, https and other apps. -->
+
+<queries>
+    <intent>
+        <action android:name="android.intent.action.VIEW" />
+        <data android:scheme="https" />
+    </intent>
+    <intent>
+        <action android:name="android.intent.action.DIAL" />
+        <data android:scheme="tel" />
+    </intent>
+    <intent>
+        <action android:name="android.intent.action.VIEW" />
+        <data android:scheme="geo" />
+    </intent>
+</queries>
