@@ -28,3 +28,41 @@ export function formatDistance(km?: number): string | null {
   if (km < 1) return `${Math.round(km * 1000)} m away`;
   return `${km.toFixed(1)} km away`;
 }
+
+/** Parses "HH:MM:SS" into minutes since midnight. */
+function parseTimeStr(t?: string): number | null {
+  if (!t) return null;
+  const parts = t.split(":");
+  if (parts.length < 2) return null;
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+/** Returns true if current local time is between opensAt and closesAt. */
+export function checkIsOpenNow(opensAt?: string, closesAt?: string, fallback: boolean = true): boolean {
+  if (!opensAt || !closesAt) return fallback;
+  const now = new Date();
+  const currentMins = now.getHours() * 60 + now.getMinutes();
+  
+  const openMins = parseTimeStr(opensAt);
+  const closeMins = parseTimeStr(closesAt);
+  
+  if (openMins === null || closeMins === null) return fallback;
+  
+  if (closeMins < openMins) {
+    // Overnight gym (e.g. 05:00 to 01:00)
+    return currentMins >= openMins || currentMins <= closeMins;
+  }
+  return currentMins >= openMins && currentMins <= closeMins;
+}
+
+/** Formats "14:30:00" -> "2:30 PM" */
+export function formatTimeShort(t?: string): string | null {
+  if (!t) return null;
+  const mins = parseTimeStr(t);
+  if (mins === null) return null;
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  const ampm = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return m === 0 ? `${h12} ${ampm}` : `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+}

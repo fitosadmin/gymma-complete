@@ -103,6 +103,7 @@ export async function findGyms(f: GymListFilters): Promise<ListResult> {
       g.area, g.city, g.price_per_month,
       g.is_premium, g.women_friendly, g.has_parking,
       g.lat, g.lng,
+      g.opens_at, g.closes_at,
       ${isOpenNowSelect} AS is_open_now,
       ${distanceSelect}  AS distance_km,
       COALESCE(r.rating, 0)::text       AS rating,

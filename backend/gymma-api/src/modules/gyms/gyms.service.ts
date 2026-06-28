@@ -27,6 +27,8 @@ function mapSummary(row: GymSummaryRow): GymSummary {
     lat: Number(row.lat),
     lng: Number(row.lng),
     isOpenNow: row.is_open_now,
+    opensAt: row.opens_at,
+    closesAt: row.closes_at,
     distanceKm: row.distance_km == null ? null : Number(row.distance_km),
     rating: Number(row.rating),
     reviewCount: Number(row.review_count),

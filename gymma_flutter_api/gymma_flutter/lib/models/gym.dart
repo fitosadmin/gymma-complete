@@ -15,6 +15,8 @@ class GymSummary {
   final double? distanceKm;
   final List<String> amenities;
   final bool isOpenNow;
+  final String? opensAt;
+  final String? closesAt;
   final bool isPremium;
   final bool womenFriendly;
   final bool hasParking;
@@ -35,6 +37,8 @@ class GymSummary {
     required this.distanceKm,
     required this.amenities,
     required this.isOpenNow,
+    this.opensAt,
+    this.closesAt,
     required this.isPremium,
     required this.womenFriendly,
     required this.hasParking,
@@ -58,6 +62,8 @@ class GymSummary {
             : (j['distanceKm'] as num).toDouble(),
         amenities: (j['amenities'] as List).cast<String>(),
         isOpenNow: j['isOpenNow'] as bool,
+        opensAt: j['opensAt'] as String?,
+        closesAt: j['closesAt'] as String?,
         isPremium: j['isPremium'] as bool,
         womenFriendly: j['womenFriendly'] as bool,
         hasParking: j['hasParking'] as bool,
@@ -85,6 +91,8 @@ class GymSummary {
         amenities: (j['amenities'] as List?)?.cast<String>() ?? const [],
         // backend may send null ("unknown") — treat as open so it isn't hidden.
         isOpenNow: (j['isOpenNow'] as bool?) ?? true,
+        opensAt: j['opensAt'] as String?,
+        closesAt: j['closesAt'] as String?,
         isPremium: (j['isPremium'] as bool?) ?? false,
         womenFriendly: (j['womenFriendly'] as bool?) ?? false,
         hasParking: (j['hasParking'] as bool?) ?? false,

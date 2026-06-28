@@ -35,6 +35,8 @@ export interface GymSummaryRow {
   lat: string;
   lng: string;
   is_open_now: boolean | null;
+  opens_at: string | null;
+  closes_at: string | null;
   distance_km: string | null;
   rating: string;
   review_count: string;
@@ -57,6 +59,8 @@ export interface GymSummary {
   lat: number;
   lng: number;
   isOpenNow: boolean | null;
+  opensAt: string | null;
+  closesAt: string | null;
   distanceKm: number | null;
   rating: number;
   reviewCount: number;

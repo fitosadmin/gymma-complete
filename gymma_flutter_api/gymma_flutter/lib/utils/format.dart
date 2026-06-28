@@ -22,3 +22,44 @@ String? formatDistance(double? km) {
   if (km < 1) return '${(km * 1000).round()} m away';
   return '${km.toStringAsFixed(1)} km away';
 }
+
+/// Parses "HH:MM:SS" into minutes since midnight.
+int? _parseTimeStr(String? t) {
+  if (t == null || t.isEmpty) return null;
+  final parts = t.split(':');
+  if (parts.length < 2) return null;
+  final h = int.tryParse(parts[0]);
+  final m = int.tryParse(parts[1]);
+  if (h == null || m == null) return null;
+  return h * 60 + m;
+}
+
+/// Returns true if current local time is between opensAt and closesAt.
+bool checkIsOpenNow(String? opensAt, String? closesAt, {bool fallback = true}) {
+  if (opensAt == null || closesAt == null) return fallback;
+  final now = DateTime.now();
+  final currentMins = now.hour * 60 + now.minute;
+  
+  final openMins = _parseTimeStr(opensAt);
+  final closeMins = _parseTimeStr(closesAt);
+  
+  if (openMins == null || closeMins == null) return fallback;
+  
+  if (closeMins < openMins) {
+    // Overnight gym
+    return currentMins >= openMins || currentMins <= closeMins;
+  }
+  return currentMins >= openMins && currentMins <= closeMins;
+}
+
+/// Formats "14:30:00" -> "2:30 PM"
+String? formatTimeShort(String? t) {
+  final mins = _parseTimeStr(t);
+  if (mins == null) return null;
+  final h = mins ~/ 60;
+  final m = mins % 60;
+  final ampm = h >= 12 ? "PM" : "AM";
+  final h12 = h % 12 == 0 ? 12 : h % 12;
+  final mStr = m.toString().padLeft(2, '0');
+  return m == 0 ? "$h12 $ampm" : "$h12:$mStr $ampm";
+}

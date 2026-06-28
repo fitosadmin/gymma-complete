@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Gymma — Find your perfect gym",
+    default: "Gymma Find your perfect gym",
     template: "%s | Gymma",
   },
   description:

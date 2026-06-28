@@ -49,6 +49,8 @@ export interface GymSummary {
   distanceKm?: number;
   amenities: Amenity[];
   isOpenNow: boolean;
+  opensAt?: string;
+  closesAt?: string;
   isPremium: boolean;
   womenFriendly: boolean;
   hasParking: boolean;

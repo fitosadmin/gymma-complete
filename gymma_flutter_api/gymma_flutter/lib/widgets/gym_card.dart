@@ -19,6 +19,10 @@ class GymCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dist = formatDistance(gym.distanceKm);
+    final localIsOpen = checkIsOpenNow(gym.opensAt, gym.closesAt, fallback: gym.isOpenNow);
+    final closesAtFormatted = formatTimeShort(gym.closesAt);
+    final opensAtFormatted = formatTimeShort(gym.opensAt);
+    
     return Material(
       color: AppColors.neutral0,
       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -48,8 +52,10 @@ class GymCard extends StatelessWidget {
                     top: 10,
                     left: 10,
                     child: Row(children: [
-                      if (gym.isOpenNow)
-                        const GymBadge('Open', variant: BadgeVariant.success),
+                      if (localIsOpen)
+                        GymBadge(closesAtFormatted != null ? 'Open · Closes $closesAtFormatted' : 'Open', variant: BadgeVariant.success)
+                      else
+                        GymBadge(opensAtFormatted != null ? 'Closed · Opens $opensAtFormatted' : 'Closed', variant: BadgeVariant.neutral),
                       if (gym.isPremium) ...[
                         const SizedBox(width: 6),
                         const GymBadge('Premium',

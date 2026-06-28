@@ -195,11 +195,11 @@ async function seed() {
 
   const client = await pool.connect();
   try {
-    await client.query('BEGIN');
+    // await client.query('BEGIN');
     
     // Optional: Delete existing gyms to start fresh
     console.log('Deleting old gyms...');
-    await client.query('TRUNCATE gyms CASCADE');
+    // await client.query('TRUNCATE gyms CASCADE');
 
     let count = 0;
     for (const place of places) {
@@ -227,7 +227,7 @@ async function seed() {
         }
         const gymId = gym.rows[0].id;
         
-        if (count % 50 === 0) {
+        if (count % 10 === 0) {
           console.log(`Seeded ${count}/${places.length} gyms...`);
         }
 
@@ -294,11 +294,11 @@ async function seed() {
       }
     }
 
-    await client.query('COMMIT');
+    // await client.query('COMMIT');
     await client.query('REFRESH MATERIALIZED VIEW gym_rating_summary');
     console.log('Seed complete! Inserted up to', places.length, 'gyms.');
   } catch (err) {
-    await client.query('ROLLBACK');
+    // await client.query('ROLLBACK');
     throw err;
   } finally {
     client.release();

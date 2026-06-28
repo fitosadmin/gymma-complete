@@ -4,7 +4,7 @@ import { Star, MapPin } from "lucide-react";
 import type { GymSummary } from "@/types/gym";
 import { GymImage } from "@/components/gym/gym-image";
 import { DirectionsButton } from "@/components/gym/directions-button";
-import { formatINR, formatDistance, cn } from "@/lib/utils";
+import { formatINR, formatDistance, cn, checkIsOpenNow, formatTimeShort } from "@/lib/utils";
 
 export interface GymCardProps {
   gym: GymSummary;
@@ -18,6 +18,10 @@ export function GymCard({ gym, priority, className }: GymCardProps) {
   const shown = gym.amenities.slice(0, 3);
   const more = gym.amenities.length - shown.length;
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${gym.lat},${gym.lng}`;
+
+  const localIsOpen = React.useMemo(() => checkIsOpenNow(gym.opensAt, gym.closesAt, gym.isOpenNow), [gym.opensAt, gym.closesAt, gym.isOpenNow]);
+  const closesAtFormatted = formatTimeShort(gym.closesAt);
+  const opensAtFormatted = formatTimeShort(gym.opensAt);
 
   return (
     <div
@@ -37,10 +41,12 @@ export function GymCard({ gym, priority, className }: GymCardProps) {
         />
         <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white px-2.5 py-1 text-caption font-medium shadow-sm">
           <span
-            className={cn("mr-1.5 inline-block h-1.5 w-1.5 rounded-full", gym.isOpenNow ? "bg-secondary-500" : "bg-neutral-400")}
+            className={cn("mr-1.5 inline-block h-1.5 w-1.5 rounded-full", localIsOpen ? "bg-secondary-500" : "bg-neutral-400")}
           />
-          <span className={gym.isOpenNow ? "text-secondary-700" : "text-neutral-500"}>
-            {gym.isOpenNow ? "Open" : "Closed"}
+          <span className={localIsOpen ? "text-secondary-700" : "text-neutral-500"}>
+            {localIsOpen
+              ? closesAtFormatted ? `Open · Closes ${closesAtFormatted}` : "Open"
+              : opensAtFormatted ? `Closed · Opens ${opensAtFormatted}` : "Closed"}
           </span>
         </span>
         {gym.isPremium && (

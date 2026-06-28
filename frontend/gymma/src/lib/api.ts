@@ -24,6 +24,8 @@ function mapGym(backendGym: any) {
   if (!backendGym) return backendGym;
   return {
     ...backendGym,
+    opensAt: backendGym.opensAt || undefined,
+    closesAt: backendGym.closesAt || undefined,
     coverImage: backendGym.coverImageUrl,
     whatsapp: backendGym.whatsapp || "",
     phone: backendGym.phone || "",
