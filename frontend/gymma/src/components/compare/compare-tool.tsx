@@ -110,10 +110,21 @@ export function CompareTool({ gyms }: { gyms: GymDetail[] }) {
             </div>
           ))}
 
-          {/* Rating */}
-          <div className={label}>Gymma rating</div>
+          {/* Google map ratings */}
+          <div className={label}>Google map ratings</div>
           {selected.map((g) => (
-            <div key={g.id} className={cn(cell, "border-l")}>
+            <div key={`${g.id}-gmap`} className={cn(cell, "border-l")}>
+              <span className={cn("inline-flex items-center gap-1 font-semibold text-neutral-900", g.rating === maxRating && "rounded-md bg-secondary-50 px-1.5 py-0.5 text-secondary-700")}>
+                <Star className="h-3.5 w-3.5 fill-rating text-rating" />
+                {g.rating.toFixed(1)}
+              </span>
+            </div>
+          ))}
+
+          {/* Gymma rating */}
+          <div className={label}>Gymma ratings</div>
+          {selected.map((g) => (
+            <div key={`${g.id}-gymma`} className={cn(cell, "border-l")}>
               <span className={cn("inline-flex items-center gap-1 font-semibold text-neutral-900", g.rating === maxRating && "rounded-md bg-secondary-50 px-1.5 py-0.5 text-secondary-700")}>
                 <Star className="h-3.5 w-3.5 fill-rating text-rating" />
                 {g.rating.toFixed(1)}
