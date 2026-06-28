@@ -7,6 +7,7 @@ import type {
   RegisterBody,
   LoginBody,
   GoogleBody,
+  GoogleAdminBody,
   RefreshBody,
   ForgotPasswordBody,
   ResetPasswordBody,
@@ -25,6 +26,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 export const google = asyncHandler(async (req: Request, res: Response) => {
   const { idToken } = req.body as GoogleBody;
   const result = await service.loginWithGoogle(idToken);
+  res.json(success(result));
+});
+
+export const googleAdmin = asyncHandler(async (req: Request, res: Response) => {
+  const { idToken } = req.body as GoogleAdminBody;
+  const result = await service.loginWithGoogleForAdmin(idToken);
   res.json(success(result));
 });
 

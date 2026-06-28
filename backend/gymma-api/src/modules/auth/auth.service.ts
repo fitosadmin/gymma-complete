@@ -118,6 +118,32 @@ export async function loginWithGoogle(idToken: string): Promise<AuthResult> {
   return issueTokens(user);
 }
 
+/**
+ * Admin-portal Google login.
+ * Only succeeds if the Google account's email is already in the DB with
+ * role = 'admin' | 'super_admin'. We deliberately do NOT auto-create users
+ * here — admins must be seeded manually in the database.
+ */
+export async function loginWithGoogleForAdmin(idToken: string): Promise<AuthResult> {
+  const profile = await verifyGoogleIdToken(idToken);
+
+  const user = await repo.findByEmail(profile.email);
+  if (!user) {
+    throw AppError.forbidden('This Google account is not authorised as an admin.');
+  }
+  if (user.role !== 'admin' && user.role !== 'super_admin') {
+    throw AppError.forbidden('This Google account does not have admin access.');
+  }
+
+  // Link Google ID if not already linked (first admin login via Google).
+  if (!user.google_id) {
+    await repo.linkGoogleId(user.id, profile.googleId, profile.picture);
+  }
+
+  await repo.recordLoginSuccess(user.id);
+  return issueTokens(user);
+}
+
 export async function refresh(refreshToken: string): Promise<AuthResult> {
   const tokenHash = hashToken(refreshToken);
   const row = await repo.findRefreshToken(tokenHash);

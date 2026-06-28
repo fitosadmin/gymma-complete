@@ -8,6 +8,7 @@ import {
   registerBody,
   loginBody,
   googleBody,
+  googleAdminBody,
   refreshBody,
   forgotPasswordBody,
   resetPasswordBody,
@@ -18,6 +19,7 @@ export const authRouter = Router();
 authRouter.post('/register', authLimiter, validate({ body: registerBody }), controller.register);
 authRouter.post('/login', authLimiter, validate({ body: loginBody }), controller.login);
 authRouter.post('/google', authLimiter, validate({ body: googleBody }), controller.google);
+authRouter.post('/google-admin', authLimiter, validate({ body: googleAdminBody }), controller.googleAdmin);
 authRouter.post('/refresh', validate({ body: refreshBody }), controller.refresh);
 authRouter.post('/logout', validate({ body: refreshBody }), controller.logout);
 authRouter.post(

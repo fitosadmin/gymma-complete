@@ -41,3 +41,9 @@ export type GoogleBody = z.infer<typeof googleBody>;
 export type RefreshBody = z.infer<typeof refreshBody>;
 export type ForgotPasswordBody = z.infer<typeof forgotPasswordBody>;
 export type ResetPasswordBody = z.infer<typeof resetPasswordBody>;
+
+// Admin-portal specific: same shape as googleBody but semantically distinct.
+export const googleAdminBody = z.object({
+  idToken: z.string().min(1),
+});
+export type GoogleAdminBody = z.infer<typeof googleAdminBody>;
