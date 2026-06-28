@@ -120,11 +120,11 @@ export function DemoForm() {
       </div>
       <div className="relative">
         <select value={formData.memberCount} onChange={update("memberCount")} className={`${inputCls} appearance-none text-neutral-400`}>
-          <option value="" disabled>Number of members</option>
-          <option value="<100">Less than 100</option>
-          <option value="100-300">100–300</option>
-          <option value="300-600">300–600</option>
-          <option value="600+">600+</option>
+          <option className="bg-[#111111] text-white" value="" disabled>Number of members</option>
+          <option className="bg-[#111111] text-white" value="<100">Less than 100</option>
+          <option className="bg-[#111111] text-white" value="100-300">100–300</option>
+          <option className="bg-[#111111] text-white" value="300-600">300–600</option>
+          <option className="bg-[#111111] text-white" value="600+">600+</option>
         </select>
         <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
       </div>
