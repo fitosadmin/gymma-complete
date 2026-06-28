@@ -15,7 +15,7 @@ export function OwnerCTA() {
               Retain more members.
             </h2>
             <p className="mt-3 max-w-md text-sm leading-relaxed text-neutral-400">
-              Get a free auto-generated profile page and member-engagement tools — at a fraction of typical market costs.
+              Get a free auto-generated profile page and member-engagement tools - at a fraction of typical market costs.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-neutral-400">
               <span className="flex items-center gap-1.5">

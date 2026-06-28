@@ -114,7 +114,7 @@ function buildFaqs(g: GymSummary): Faq[] {
     {
       id: "f2",
       question: "Is a free trial available?",
-      answer: "Yes — a complimentary trial session is available for new visitors. Send an inquiry to book your slot.",
+      answer: "Yes - a complimentary trial session is available for new visitors. Send an inquiry to book your slot.",
     },
     {
       id: "f3",

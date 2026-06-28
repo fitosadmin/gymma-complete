@@ -101,7 +101,7 @@ export function Hero({ onLocationChange }: { onLocationChange?: (loc: UserLocati
         </h1>
 
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-neutral-500">
-          Discover, compare, and join gyms near you. Real photos, honest ratings, and transparent pricing — all in one place.
+          Discover, compare, and join gyms near you. Real photos, honest ratings, and transparent pricing - all in one place.
         </p>
 
         {/* Search */}

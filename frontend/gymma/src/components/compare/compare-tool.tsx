@@ -49,7 +49,7 @@ export function CompareTool({ gyms }: { gyms: GymDetail[] }) {
       <option value="">+ Add a gym…</option>
       {remaining.map((g) => (
         <option key={g.id} value={g.id}>
-          {g.name} — {g.area}
+          {g.name} - {g.area}
         </option>
       ))}
     </select>
@@ -130,7 +130,7 @@ export function CompareTool({ gyms }: { gyms: GymDetail[] }) {
           {/* Distance */}
           <div className={label}>Distance</div>
           {selected.map((g) => (
-            <div key={g.id} className={cn(cell, "border-l text-neutral-700")}>{formatDistance(g.distanceKm) ?? "—"}</div>
+            <div key={g.id} className={cn(cell, "border-l text-neutral-700")}>{formatDistance(g.distanceKm) ?? "-"}</div>
           ))}
 
           {/* Booleans */}

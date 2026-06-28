@@ -64,7 +64,7 @@ export function PlansSection({ plans }: { plans: MembershipPlan[] }) {
         })}
       </div>
       <p className="mt-3 text-center text-caption text-neutral-400">
-        Inquiry only — no payment is taken here. The gym confirms your plan directly.
+        Inquiry only - no payment is taken here. The gym confirms your plan directly.
       </p>
     </section>
   );

@@ -18,7 +18,7 @@ const ITEMS = [
     iconBg: "bg-primary-100",
     iconColor: "text-primary-600",
     title: "Verified reviews & Gymma rating",
-    desc: "Verified reviews from real members on cleanliness, trainers, equipment, and value — plus a Gymma rating that aggregates quality signals into a single trusted score.",
+    desc: "Verified reviews from real members on cleanliness, trainers, equipment, and value - plus a Gymma rating that aggregates quality signals into a single trusted score.",
     showRatingBadges: true,
   },
   {
@@ -26,7 +26,7 @@ const ITEMS = [
     iconBg: "bg-primary-100",
     iconColor: "text-primary-600",
     title: "Transparent pricing",
-    desc: "See membership plans upfront. No hidden fees, no guesswork — just clear info.",
+    desc: "See membership plans upfront. No hidden fees, no guesswork - just clear info.",
     showRatingBadges: false,
   },
   {
@@ -113,7 +113,7 @@ export function WhyChooseUs() {
                 <p className="text-sm leading-relaxed text-neutral-500">
                   {showRatingBadges ? (
                     <>
-                      Verified reviews from real members on cleanliness, trainers, equipment, and value — plus a{" "}
+                      Verified reviews from real members on cleanliness, trainers, equipment, and value - plus a{" "}
                       <span className="font-semibold text-primary-600">Gymma rating</span> that aggregates quality signals into a single trusted score.
                     </>
                   ) : (
