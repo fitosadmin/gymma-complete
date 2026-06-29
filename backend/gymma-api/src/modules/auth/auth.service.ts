@@ -101,15 +101,7 @@ export async function loginWithGoogle(idToken: string): Promise<AuthResult> {
 
   let user = await repo.findByEmail(profile.email);
   if (!user) {
-    user = await repo.createUser({
-      email: profile.email,
-      passwordHash: null,
-      fullName: profile.name ?? profile.email,
-      role: 'owner',
-      googleId: profile.googleId,
-      avatarUrl: profile.picture,
-      emailVerified: profile.emailVerified,
-    });
+    throw AppError.forbidden('Consumer accounts are not currently supported.');
   } else if (!user.google_id) {
     await repo.linkGoogleId(user.id, profile.googleId, profile.picture);
   }
@@ -144,23 +136,39 @@ export async function loginWithGoogleForAdmin(idToken: string): Promise<AuthResu
   return issueTokens(user);
 }
 
+import { findByEmail as findDemoRequest } from '../demo-requests/demo-requests.repository';
+import { onboardGymTransaction } from '../admin/admin.repository';
+
 export async function loginWithGoogleForOwner(idToken: string): Promise<AuthResult> {
   const profile = await verifyGoogleIdToken(idToken);
 
-  const user = await repo.findByEmail(profile.email);
+  let user = await repo.findByEmail(profile.email);
   if (!user) {
-    throw AppError.forbidden('Your email is not registered as a gym owner. Please contact support.');
+    // Check if they have an approved or pending demo request
+    const demoReq = await findDemoRequest(profile.email);
+    if (!demoReq) {
+      throw AppError.forbidden('Your email is not registered as a gym owner. Please request a demo first.');
+    }
+    
+    // Auto-onboard them! Create the gym placeholder and user account
+    const slugify = (text: string) => text.toLowerCase().replace(/[^\w ]+/g, '').replace(/ +/g, '-');
+    const baseSlug = slugify(demoReq.gym_name || 'gym');
+    const slug = `${baseSlug}-${Math.random().toString(36).substring(2, 6)}`;
+    
+    const { userId } = await onboardGymTransaction(demoReq.id, demoReq, slug);
+    user = await repo.findById(userId);
   }
-  if (user.role !== 'owner' && user.role !== 'admin' && user.role !== 'super_admin') {
+
+  if (user!.role !== 'owner' && user!.role !== 'admin' && user!.role !== 'super_admin') {
     throw AppError.forbidden('This Google account does not have owner access.');
   }
 
-  if (!user.google_id) {
-    await repo.linkGoogleId(user.id, profile.googleId, profile.picture);
+  if (!user!.google_id) {
+    await repo.linkGoogleId(user!.id, profile.googleId, profile.picture);
   }
 
-  await repo.recordLoginSuccess(user.id);
-  return issueTokens(user);
+  await repo.recordLoginSuccess(user!.id);
+  return issueTokens(user!);
 }
 
 export async function refresh(refreshToken: string): Promise<AuthResult> {

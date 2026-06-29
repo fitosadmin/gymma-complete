@@ -96,7 +96,7 @@ export async function linkOwner(gymId: string, body: LinkOwnerBody) {
 export async function onboardDemoRequest(id: string) {
   const req = await repo.getDemoRequestById(id);
   if (!req) throw AppError.notFound('Demo request not found');
-  if (req.status === 'onboarded') throw AppError.badRequest('Already onboarded');
+  if (req.status === 'onboarded') throw AppError.conflict('Already onboarded');
   
   // Create a unique slug from gym_name
   const baseSlug = req.gym_name ? req.gym_name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'gym';

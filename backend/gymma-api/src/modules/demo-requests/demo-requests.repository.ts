@@ -22,3 +22,10 @@ export async function insertDemoRequest(
   );
   return row!;
 }
+
+export async function findByEmail(email: string) {
+  return queryOne<any>(
+    `SELECT * FROM demo_requests WHERE email = $1 ORDER BY created_at DESC LIMIT 1`,
+    [email]
+  );
+}
