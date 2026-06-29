@@ -226,10 +226,11 @@ export async function addMemberToGym(
     if (userRes.rows.length > 0) {
       userId = userRes.rows[0].id;
     } else {
+      const fallbackEmail = data.email || `${data.phone}@member.gymma.local`;
       userRes = await client.query(
         `INSERT INTO users (phone, full_name, email, password_hash, role)
          VALUES ($1, $2, $3, $4, 'member') RETURNING id`,
-        [data.phone, data.fullName, data.email || null, data.passwordHash]
+        [data.phone, data.fullName, fallbackEmail, data.passwordHash]
       );
       userId = userRes.rows[0].id;
     }
