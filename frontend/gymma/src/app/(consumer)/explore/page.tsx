@@ -9,6 +9,7 @@ import { MapPreview } from "@/components/landing/map-preview";
 import { WhyChooseUs } from "@/components/landing/why-choose-us";
 import { OwnerCTA } from "@/components/landing/owner-cta";
 import { ContactSection } from "@/components/landing/contact-section";
+import { GymGridSkeleton } from "@/components/ui/skeleton";
 import { getFeatured } from "@/lib/api";
 
 interface UserLocation {
@@ -25,10 +26,6 @@ export default function ExplorePage() {
     getFeatured().then(setF).catch(console.error);
   }, []);
 
-  if (!f) {
-    return <div className="flex h-screen items-center justify-center">Loading gyms...</div>;
-  }
-
   return (
     <>
       <Hero onLocationChange={setUserLocation} />
@@ -37,19 +34,24 @@ export default function ExplorePage() {
       {/* Map moved above all gym sections */}
       <MapPreview userLocation={userLocation} />
 
+      {/* Top rated — first section, white bg */}
       <section className="mx-auto max-w-7xl px-6 py-20">
         <SectionHeader eyebrow="Editor's pick" title="Top rated gyms" cta="View all" href="/search?sort=rating" />
-        <GymGrid gyms={f.topRated} />
+        {f ? <GymGrid gyms={f.topRated} /> : <GymGridSkeleton />}
       </section>
 
-      <section className="mx-auto max-w-7xl border-t border-neutral-100 px-6 py-20">
-        <SectionHeader eyebrow="Closest to you" title="Gyms nearby" cta="See more" href="/search?sort=distance" />
-        <GymGrid gyms={f.nearby} />
+      {/* Nearby — subtle background for rhythm */}
+      <section className="bg-surface-subtle">
+        <div className="mx-auto max-w-7xl px-6 py-20">
+          <SectionHeader eyebrow="Closest to you" title="Gyms nearby" cta="See more" href="/search?sort=distance" />
+          {f ? <GymGrid gyms={f.nearby} /> : <GymGridSkeleton />}
+        </div>
       </section>
 
-      <section className="mx-auto max-w-7xl border-t border-neutral-100 px-6 py-20">
+      {/* Affordable — back to white */}
+      <section className="mx-auto max-w-7xl px-6 py-20">
         <SectionHeader eyebrow="Best value" title="Affordable gyms" cta="See all" href="/search?sort=price_asc" />
-        <GymGrid gyms={f.affordable} />
+        {f ? <GymGrid gyms={f.affordable} /> : <GymGridSkeleton />}
       </section>
 
       <WhyChooseUs />

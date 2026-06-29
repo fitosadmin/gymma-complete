@@ -156,8 +156,15 @@ export function Header() {
       <header
         className={cn(
           "fixed inset-x-0 top-0 z-50 transition-all duration-300 flex flex-col",
-          scrolled || mobileMenuOpen ? "border-b border-neutral-200 bg-white/90 backdrop-blur" : "border-b border-transparent bg-transparent"
+          scrolled || mobileMenuOpen
+            ? "border-b border-neutral-200/60 shadow-sm"
+            : "border-b border-transparent bg-transparent"
         )}
+        style={scrolled || mobileMenuOpen ? {
+          background: "var(--glass-bg)",
+          backdropFilter: `blur(var(--glass-blur))`,
+          WebkitBackdropFilter: `blur(var(--glass-blur))`,
+        } : undefined}
       >
         <nav className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-6">
           <Link href="/explore" className="flex items-center gap-2.5" onClick={() => setMobileMenuOpen(false)}>

@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { Search, MapPin, Clock, Navigation, Loader2 } from "lucide-react";
 import { MOCK_GYMS } from "@/lib/mock-data";
+import { Reveal } from "@/components/ui/reveal";
 
 const RECENT_KEY = "gymma:recent-searches";
 const TAGS = ["Near me", "Open now", "Budget", "With pool", "24/7 access", "Women's section"];
@@ -88,109 +89,130 @@ export function Hero({ onLocationChange }: { onLocationChange?: (loc: UserLocati
   const showDrop = focused && (suggestions.length > 0 || (query.length < 2 && recent.length > 0));
 
   return (
-    <section className="mx-auto max-w-7xl px-6 pb-20 pt-14 sm:pt-20">
-      <div className="max-w-3xl">
-        <span className="inline-block rounded-full border border-primary-200 bg-primary-50 px-3 py-1 text-caption font-semibold text-primary-700">
-          India&apos;s most trusted gym discovery platform
-        </span>
+    <section className="relative overflow-hidden bg-gradient-to-br from-neutral-50 via-white to-primary-50/30">
+      {/* Subtle decorative elements */}
+      <div className="pointer-events-none absolute -right-40 -top-40 h-[500px] w-[500px] rounded-full bg-primary-100/40 blur-3xl" />
+      <div className="pointer-events-none absolute -left-20 bottom-0 h-[300px] w-[300px] rounded-full bg-primary-50/60 blur-3xl" />
 
-        <h1 className="mt-6 text-5xl font-semibold leading-[1.1] tracking-tight text-neutral-900 sm:text-6xl">
-          Find your
-          <br />
-          <span className="text-primary-500">perfect</span> gym.
-        </h1>
-
-        <p className="mt-6 max-w-xl text-lg leading-relaxed text-neutral-500">
-          Discover, compare, and join gyms near you. Real photos, honest ratings, and transparent pricing - all in one place.
-        </p>
-
-        {/* Search */}
-        <div className="mt-10 flex max-w-2xl flex-col gap-3 sm:flex-row">
-          {/* Location button */}
-          <button
-            onClick={requestLocation}
-            disabled={locationStatus === "loading"}
-            className="flex h-12 shrink-0 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm transition-colors hover:border-primary-400 hover:text-primary-600 disabled:opacity-60"
-            style={{ minWidth: "180px" }}
-          >
-            {locationStatus === "loading" ? (
-              <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
-            ) : locationStatus === "granted" ? (
-              <Navigation className="h-4 w-4 text-primary-500" />
-            ) : (
-              <MapPin className="h-4 w-4 text-neutral-400" />
-            )}
-            <span className="truncate text-left text-neutral-700">
-              {locationStatus === "loading"
-                ? "Locating…"
-                : location
-                ? location.label
-                : "Use my location"}
+      <div className="relative mx-auto max-w-7xl px-6 pb-20 pt-20 sm:pt-28">
+        <div className="max-w-3xl">
+          <Reveal delay={0}>
+            <span className="inline-block rounded-full border border-primary-200 bg-primary-50 px-3.5 py-1.5 text-caption font-semibold uppercase tracking-wider text-primary-700">
+              India&apos;s most trusted gym discovery platform
             </span>
-            {locationStatus === "denied" && (
-              <span className="ml-auto text-xs text-red-500">Denied</span>
-            )}
-          </button>
+          </Reveal>
 
-          <div className="relative flex-[2]">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => setFocused(true)}
-              onBlur={() => setTimeout(() => setFocused(false), 150)}
-              onKeyDown={(e) => e.key === "Enter" && submit(query)}
-              placeholder="Gym name, area, or amenity"
-              aria-label="Search gyms"
-              className="h-12 w-full rounded-lg border border-neutral-200 bg-white pl-10 pr-4 text-sm text-neutral-900 placeholder:text-neutral-400 focus:border-neutral-400 focus:outline-none"
-            />
-            {showDrop && (
-              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 overflow-hidden rounded-lg border border-neutral-200 bg-white py-1.5 shadow-lg">
-                {suggestions.length > 0
-                  ? suggestions.map((g) => (
-                      <button
-                        key={g.id}
-                        onMouseDown={() => submit(g.name)}
-                        className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-neutral-50"
-                      >
-                        <MapPin className="h-4 w-4 text-neutral-400" />
-                        <span className="text-sm text-neutral-900">{g.name}</span>
-                        <span className="ml-auto text-caption text-neutral-400">{g.area}</span>
-                      </button>
-                    ))
-                  : recent.map((r) => (
-                      <button
-                        key={r}
-                        onMouseDown={() => submit(r)}
-                        className="flex w-full items-center gap-3 px-4 py-2 text-left hover:bg-neutral-50"
-                      >
-                        <Clock className="h-4 w-4 text-neutral-400" />
-                        <span className="text-sm text-neutral-700">{r}</span>
-                      </button>
-                    ))}
+          <Reveal delay={0.1}>
+            <h1 className="mt-8 text-display sm:text-[3.5rem] lg:text-[4.25rem] leading-[1.08] tracking-tight text-neutral-900">
+              Find your
+              <br />
+              <span
+                className="bg-clip-text text-transparent"
+                style={{ backgroundImage: "var(--gradient-accent)" }}
+              >
+                perfect
+              </span>{" "}
+              gym.
+            </h1>
+          </Reveal>
+
+          <Reveal delay={0.2}>
+            <p className="mt-6 max-w-xl text-lg leading-relaxed text-neutral-500">
+              Discover, compare, and join gyms near you. Real photos, honest ratings, and transparent pricing — all in one place.
+            </p>
+          </Reveal>
+
+          {/* Search */}
+          <Reveal delay={0.3}>
+            <div className="mt-10 flex max-w-2xl flex-col gap-3 sm:flex-row">
+              {/* Location button */}
+              <button
+                onClick={requestLocation}
+                disabled={locationStatus === "loading"}
+                className="flex h-12 shrink-0 items-center gap-2 rounded-lg border border-neutral-200 bg-white px-4 text-sm transition-all duration-150 ease-ease-out-custom hover:border-primary-400 hover:text-primary-600 hover:shadow-sm disabled:opacity-60 sm:min-w-[160px]"
+              >
+                {locationStatus === "loading" ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-neutral-400" />
+                ) : locationStatus === "granted" ? (
+                  <Navigation className="h-4 w-4 text-primary-500" />
+                ) : (
+                  <MapPin className="h-4 w-4 text-neutral-400" />
+                )}
+                <span className="truncate text-left text-neutral-700">
+                  {locationStatus === "loading"
+                    ? "Locating…"
+                    : location
+                    ? location.label
+                    : "Use my location"}
+                </span>
+                {locationStatus === "denied" && (
+                  <span className="ml-auto text-xs text-error">Denied</span>
+                )}
+              </button>
+
+              <div className="relative flex-[2]">
+                <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setTimeout(() => setFocused(false), 150)}
+                  onKeyDown={(e) => e.key === "Enter" && submit(query)}
+                  placeholder="Gym name, area, or amenity"
+                  aria-label="Search gyms"
+                  className="h-12 w-full rounded-lg border border-neutral-200 bg-white pl-10 pr-4 text-sm text-neutral-900 shadow-sm placeholder:text-neutral-400 transition-all duration-150 focus:border-primary-400 focus:shadow-md focus:outline-none"
+                />
+                {showDrop && (
+                  <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-20 overflow-hidden rounded-lg border border-neutral-200 bg-white py-1.5 shadow-lg">
+                    {suggestions.length > 0
+                      ? suggestions.map((g) => (
+                          <button
+                            key={g.id}
+                            onMouseDown={() => submit(g.name)}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-neutral-50"
+                          >
+                            <MapPin className="h-4 w-4 text-neutral-400" />
+                            <span className="text-sm text-neutral-900">{g.name}</span>
+                            <span className="ml-auto text-caption text-neutral-400">{g.area}</span>
+                          </button>
+                        ))
+                      : recent.map((r) => (
+                          <button
+                            key={r}
+                            onMouseDown={() => submit(r)}
+                            className="flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors hover:bg-neutral-50"
+                          >
+                            <Clock className="h-4 w-4 text-neutral-400" />
+                            <span className="text-sm text-neutral-700">{r}</span>
+                          </button>
+                        ))}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
 
-          <button
-            onClick={() => submit(query || "gyms near me")}
-            className="h-12 shrink-0 rounded-lg bg-ink px-6 text-sm font-medium text-white transition-colors hover:bg-ink-hover"
-          >
-            Search gyms
-          </button>
-        </div>
+              <button
+                onClick={() => submit(query || "gyms near me")}
+                className="h-12 shrink-0 rounded-lg bg-ink px-6 text-button text-white shadow-sm transition-all duration-150 ease-ease-out-custom hover:bg-ink-hover hover:shadow-md active:scale-[0.99]"
+              >
+                Search gyms
+              </button>
+            </div>
+          </Reveal>
 
-        {/* Quick tags */}
-        <div className="mt-5 flex flex-wrap gap-2">
-          {TAGS.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => submit(tag)}
-              className="rounded-full border border-neutral-200 px-3 py-1.5 text-caption text-neutral-600 transition-colors hover:border-neutral-400 hover:text-neutral-900"
-            >
-              {tag}
-            </button>
-          ))}
+          {/* Quick tags */}
+          <Reveal delay={0.4}>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {TAGS.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => submit(tag)}
+                  className="rounded-full border border-neutral-200 px-3.5 py-1.5 text-caption text-neutral-600 transition-all duration-150 ease-ease-out-custom hover:border-neutral-400 hover:bg-neutral-50 hover:text-neutral-900"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </Reveal>
         </div>
       </div>
     </section>

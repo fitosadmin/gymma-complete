@@ -26,8 +26,9 @@ export function GymCard({ gym, priority, className }: GymCardProps) {
   return (
     <div
       className={cn(
-        "group relative flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white",
-        "transition-all duration-200 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-lg",
+        "group relative flex flex-col overflow-hidden rounded-lg border border-neutral-200 bg-white shadow-card",
+        "transition-all duration-300 ease-ease-out-custom",
+        "hover:-translate-y-1 hover:border-neutral-300 hover:shadow-card-hover",
         className
       )}
     >
@@ -37,9 +38,12 @@ export function GymCard({ gym, priority, className }: GymCardProps) {
           name={gym.name}
           src={gym.coverImage}
           priority={priority}
-          className="h-full w-full transition-transform duration-500 group-hover:scale-105"
+          className="h-full w-full transition-transform duration-500 ease-ease-out-custom group-hover:scale-105"
         />
-        <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white px-2.5 py-1 text-caption font-medium shadow-sm">
+        {/* Bottom vignette for pill legibility */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+
+        <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-white/90 backdrop-blur-sm px-2.5 py-1 text-caption font-medium shadow-sm">
           <span
             className={cn("mr-1.5 inline-block h-1.5 w-1.5 rounded-full", localIsOpen ? "bg-secondary-500" : "bg-neutral-400")}
           />
@@ -50,7 +54,7 @@ export function GymCard({ gym, priority, className }: GymCardProps) {
           </span>
         </span>
         {gym.isPremium && (
-          <span className="absolute right-3 top-3 rounded-full bg-ink px-2.5 py-1 text-caption font-medium text-white">
+          <span className="absolute right-3 top-3 rounded-full bg-ink px-2.5 py-1 text-caption font-medium text-white shadow-sm">
             Premium
           </span>
         )}
@@ -59,19 +63,19 @@ export function GymCard({ gym, priority, className }: GymCardProps) {
       {/* Body */}
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-start justify-between gap-2">
-          <h3 className="text-base font-semibold leading-snug text-neutral-900 group-hover:text-neutral-700">
+          <h3 className="text-h4 leading-snug text-neutral-900 group-hover:text-neutral-700 transition-colors">
             <Link href={`/gym/${gym.slug}`} className="focus:outline-none after:absolute after:inset-0">
               {gym.name}
             </Link>
           </h3>
-          <span className="flex shrink-0 items-center gap-1">
+          <span className="flex shrink-0 items-center gap-1 rounded-full bg-neutral-50 px-2 py-0.5">
             <Star className="h-3.5 w-3.5 fill-rating text-rating" />
             <span className="text-sm font-semibold text-neutral-900">{gym.rating.toFixed(1)}</span>
             <span className="text-caption text-neutral-400">({gym.reviewCount})</span>
           </span>
         </div>
 
-        <div className="flex items-center justify-between gap-2 text-sm text-neutral-500">
+        <div className="flex items-center justify-between gap-2 text-body-sm text-neutral-500">
           <span className="flex min-w-0 items-center gap-1">
             <MapPin className="h-3.5 w-3.5 shrink-0" />
             <span className="truncate">
@@ -79,15 +83,15 @@ export function GymCard({ gym, priority, className }: GymCardProps) {
               {distance && <span className="text-neutral-400"> · {distance.replace(" away", "")}</span>}
             </span>
           </span>
-          <span className="shrink-0 font-medium text-neutral-900">
+          <span className="shrink-0 text-h4 text-neutral-900">
             {formatINR(gym.pricePerMonth)}
-            <span className="font-normal text-neutral-400">/mo</span>
+            <span className="text-body-sm font-normal text-neutral-400">/mo</span>
           </span>
         </div>
 
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           {shown.map((a) => (
-            <span key={a} className="rounded-full bg-neutral-100 px-2 py-0.5 text-caption text-neutral-600">
+            <span key={a} className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-caption text-neutral-600">
               {a}
             </span>
           ))}
@@ -95,7 +99,10 @@ export function GymCard({ gym, priority, className }: GymCardProps) {
         </div>
 
         <div className="relative z-10 mt-auto flex gap-2 border-t border-neutral-100 pt-3">
-          <Link href={`/gym/${gym.slug}`} className="flex-1 rounded-md bg-ink py-2 text-center text-sm font-medium text-white transition-colors group-hover:bg-ink-hover">
+          <Link
+            href={`/gym/${gym.slug}`}
+            className="flex-1 rounded-md bg-ink py-2.5 text-center text-button text-white transition-all duration-150 ease-ease-out-custom hover:bg-ink-hover active:scale-[0.99]"
+          >
             View details
           </Link>
           <DirectionsButton mapsUrl={mapsUrl} />

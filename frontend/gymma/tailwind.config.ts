@@ -49,6 +49,17 @@ const config: Config = {
           DEFAULT: "var(--color-ink)",
           hover: "var(--color-ink-hover)",
         },
+        /* P1: named surface aliases */
+        surface: {
+          base: "var(--surface-base)",
+          subtle: "var(--surface-subtle)",
+          raised: "var(--surface-raised)",
+          inverse: "var(--surface-inverse)",
+        },
+      },
+      borderColor: {
+        subtle: "var(--border-subtle)",
+        strong: "var(--border-strong)",
       },
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
@@ -84,9 +95,19 @@ const config: Config = {
           "0%": { opacity: "0", transform: "translateY(20px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
         },
+        shimmer: {
+          "0%": { backgroundPosition: "-200% 0" },
+          "100%": { backgroundPosition: "200% 0" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.6s cubic-bezier(0.16,1,0.3,1) both",
+        shimmer: "shimmer 1.5s linear infinite",
+      },
+      transitionTimingFunction: {
+        "ease-out-custom": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "ease-in-out-custom": "cubic-bezier(0.65, 0, 0.35, 1)",
+        spring: "cubic-bezier(0.34, 1.56, 0.64, 1)",
       },
     },
   },
@@ -94,3 +115,4 @@ const config: Config = {
 };
 
 export default config;
+
