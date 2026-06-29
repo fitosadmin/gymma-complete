@@ -158,3 +158,35 @@ export async function loginWithGoogleForOwner(idToken: string) {
   if (!json.success) throw new Error(json.error?.message || "Login failed");
   return json.data;
 }
+
+export async function listOwnerGyms(token: string) {
+  const res = await fetch(`${API_URL}/owner/gyms`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error?.message || "Failed to fetch gyms");
+  return json.data;
+}
+
+export async function listMembers(gymId: string, token: string) {
+  const res = await fetch(`${API_URL}/owner/gyms/${gymId}/members`, {
+    headers: { "Authorization": `Bearer ${token}` }
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error?.message || "Failed to fetch members");
+  return json.data;
+}
+
+export async function addMember(gymId: string, token: string, data: { fullName: string; phone: string; email?: string; planId?: string }) {
+  const res = await fetch(`${API_URL}/owner/gyms/${gymId}/members`, {
+    method: "POST",
+    headers: { 
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error?.message || "Failed to add member");
+  return json.data;
+}

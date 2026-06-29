@@ -94,3 +94,19 @@ export async function addGalleryImages(
 export async function onboardGym(gymId: string, data: OnboardGymBody): Promise<void> {
   await repo.onboardGymTransaction(gymId, data);
 }
+
+import bcrypt from 'bcryptjs';
+
+export async function listMembers(gymId: string) {
+  return repo.listMembers(gymId);
+}
+
+export async function addMember(gymId: string, data: { phone: string; fullName: string; email?: string; planId?: string }) {
+  const defaultPassword = 'Gymma@1234';
+  const passwordHash = await bcrypt.hash(defaultPassword, 12);
+
+  return repo.addMemberToGym(gymId, {
+    ...data,
+    passwordHash
+  });
+}

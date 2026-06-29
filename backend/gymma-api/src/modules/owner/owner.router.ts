@@ -12,6 +12,7 @@ import {
   updateInquiryBody,
   updateGymBody,
   onboardGymBody,
+  addMemberBody,
 } from './owner.schema';
 
 const upload = multer({
@@ -66,4 +67,18 @@ ownerRouter.post(
   verifyGymOwnership,
   upload.array('images', 10),
   controller.uploadGallery,
+);
+
+ownerRouter.get(
+  '/gyms/:gymId/members',
+  validate({ params: gymIdParam }),
+  verifyGymOwnership,
+  controller.listMembers,
+);
+
+ownerRouter.post(
+  '/gyms/:gymId/members',
+  validate({ params: gymIdParam, body: addMemberBody }),
+  verifyGymOwnership,
+  controller.addMember,
 );

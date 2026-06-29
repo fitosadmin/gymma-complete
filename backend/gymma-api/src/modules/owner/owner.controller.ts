@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { success } from '../../shared/response/envelope';
 import { asyncHandler } from '../../shared/utils/asyncHandler';
 import * as service from './owner.service';
-import type { ListInquiriesQuery, UpdateInquiryBody, UpdateGymBody, OnboardGymBody } from './owner.schema';
+import type { ListInquiriesQuery, UpdateInquiryBody, UpdateGymBody, OnboardGymBody, AddMemberBody } from './owner.schema';
 
 export const listGyms = asyncHandler(async (req: Request, res: Response) => {
   const gyms = await service.listGyms(req.user!.id);
@@ -41,4 +41,14 @@ export const uploadGallery = asyncHandler(async (req: Request, res: Response) =>
   const files = (req.files as Express.Multer.File[]) ?? [];
   const inserted = await service.addGalleryImages(req.params.gymId, files);
   res.status(201).json(success(inserted));
+});
+
+export const listMembers = asyncHandler(async (req: Request, res: Response) => {
+  const members = await service.listMembers(req.params.gymId);
+  res.json(success(members));
+});
+
+export const addMember = asyncHandler(async (req: Request, res: Response) => {
+  const result = await service.addMember(req.params.gymId, req.body as AddMemberBody);
+  res.status(201).json(success(result));
 });

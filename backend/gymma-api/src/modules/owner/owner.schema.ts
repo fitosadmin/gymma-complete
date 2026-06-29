@@ -63,4 +63,12 @@ export const onboardGymBody = z.object({
   ).optional(),
 });
 
+export const addMemberBody = z.object({
+  fullName: z.string().trim().min(1, 'Name is required'),
+  phone: z.string().trim().min(1, 'Phone number is required'),
+  email: z.string().trim().email('Invalid email').optional(),
+  planId: z.string().uuid().optional(),
+});
+
 export type OnboardGymBody = z.infer<typeof onboardGymBody>;
+export type AddMemberBody = z.infer<typeof addMemberBody>;

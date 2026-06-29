@@ -213,3 +213,50 @@ export async function onboardGymTransaction(gymId: string, data: OnboardGymBody)
     }
   });
 }
+
+export async function addMemberToGym(
+  gymId: string,
+  data: { phone: string; fullName: string; email?: string; passwordHash: string; planId?: string }
+): Promise<{ id: string }> {
+  return withTransaction(async (client) => {
+    // Check if user exists by phone
+    let userRes = await client.query(`SELECT id FROM users WHERE phone = $1`, [data.phone]);
+    let userId: string;
+
+    if (userRes.rows.length > 0) {
+      userId = userRes.rows[0].id;
+    } else {
+      userRes = await client.query(
+        `INSERT INTO users (phone, full_name, email, password_hash, role)
+         VALUES ($1, $2, $3, $4, 'member') RETURNING id`,
+        [data.phone, data.fullName, data.email || null, data.passwordHash]
+      );
+      userId = userRes.rows[0].id;
+    }
+
+    // Link user to gym
+    await client.query(
+      `INSERT INTO gym_members (gym_id, user_id, membership_plan_id, start_date)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (gym_id, user_id) DO NOTHING`,
+      [gymId, userId, data.planId || null]
+    );
+
+    return { id: userId };
+  });
+}
+
+export async function listMembers(gymId: string) {
+  const rows = await query<any>(
+    `SELECT m.id as membership_id, m.status, m.start_date, m.end_date,
+            u.id as user_id, u.full_name, u.phone, u.email,
+            p.name as plan_name
+       FROM gym_members m
+       JOIN users u ON m.user_id = u.id
+       LEFT JOIN membership_plans p ON m.membership_plan_id = p.id
+      WHERE m.gym_id = $1 AND m.deleted_at IS NULL
+      ORDER BY m.created_at DESC`,
+    [gymId]
+  );
+  return rows;
+}

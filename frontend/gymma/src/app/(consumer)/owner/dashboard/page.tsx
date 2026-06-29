@@ -10,6 +10,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { AnnouncementComposer } from "@/components/owner/announcement-composer";
 import { cn } from "@/lib/utils";
+import { MembersTab } from "@/components/owner/members-tab";
+import { listOwnerGyms } from "@/lib/api";
 
 const GYM = { name: "Iron Temple Fitness", area: "Indiranagar, Bengaluru", slug: "iron-temple-indiranagar", completion: 80 };
 
@@ -43,13 +45,21 @@ const ACTIONS = [
 export default function OwnerDashboardPage() {
   const router = useRouter();
   const [isAuth, setIsAuth] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<"overview" | "members">("overview");
+  const [token, setToken] = React.useState("");
+  const [gymId, setGymId] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    import("@/lib/auth").then(({ isAuthenticated }) => {
+    import("@/lib/auth").then(({ isAuthenticated, getAccessToken }) => {
       if (!isAuthenticated()) {
         router.replace("/owner/login");
       } else {
+        const t = getAccessToken() || "";
+        setToken(t);
         setIsAuth(true);
+        listOwnerGyms(t).then((gyms: any[]) => {
+          if (gyms.length > 0) setGymId(gyms[0].id);
+        }).catch(console.error);
       }
     });
   }, [router]);
@@ -57,7 +67,7 @@ export default function OwnerDashboardPage() {
   if (!isAuth) return null;
 
   return (
-    <div className="bg-neutral-50">
+    <div className="bg-neutral-50 min-h-screen">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -85,7 +95,39 @@ export default function OwnerDashboardPage() {
           </div>
         </div>
 
-        {/* Profile completion */}
+        {/* Tabs */}
+        <div className="mt-8 border-b border-neutral-200">
+          <nav className="-mb-px flex space-x-8">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={cn(
+                "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium",
+                activeTab === "overview"
+                  ? "border-primary-500 text-primary-600"
+                  : "border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700"
+              )}
+            >
+              Overview
+            </button>
+            <button
+              onClick={() => setActiveTab("members")}
+              className={cn(
+                "whitespace-nowrap border-b-2 py-4 px-1 text-sm font-medium",
+                activeTab === "members"
+                  ? "border-primary-500 text-primary-600"
+                  : "border-transparent text-neutral-500 hover:border-neutral-300 hover:text-neutral-700"
+              )}
+            >
+              Members
+            </button>
+          </nav>
+        </div>
+
+        {activeTab === "members" ? (
+          gymId ? <MembersTab gymId={gymId} token={token} /> : <p className="mt-6 text-neutral-500">Loading gym data...</p>
+        ) : (
+          <>
+            {/* Profile completion */}
         <div className="mt-6 flex flex-col gap-3 rounded-xl border border-neutral-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex-1">
             <div className="flex items-center justify-between">
@@ -178,6 +220,8 @@ export default function OwnerDashboardPage() {
         <p className="mt-6 text-caption text-neutral-400">
           Preview dashboard with sample data. Full owner tooling (auth, real analytics, member management) is on the roadmap.
         </p>
+          </>
+        )}
       </div>
     </div>
   );
