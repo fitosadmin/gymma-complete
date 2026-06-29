@@ -36,3 +36,31 @@ export const updateGymBody = z
 export type ListInquiriesQuery = z.infer<typeof listInquiriesQuery>;
 export type UpdateInquiryBody = z.infer<typeof updateInquiryBody>;
 export type UpdateGymBody = z.infer<typeof updateGymBody>;
+
+export const onboardGymBody = z.object({
+  description: z.string().trim().max(4000).optional(),
+  opensAt: time.optional(),
+  closesAt: time.optional(),
+  photos: z.array(
+    z.object({
+      url: z.string().url(),
+      caption: z.string().optional(),
+    })
+  ).optional(),
+  amenities: z.array(z.string()).optional(),
+  membershipPlans: z.array(
+    z.object({
+      name: z.string().trim(),
+      durationMonths: z.number().int().positive(),
+      price: z.number().int().positive(),
+    })
+  ).optional(),
+  trainers: z.array(
+    z.object({
+      name: z.string().trim(),
+      specialization: z.string().trim().optional(),
+    })
+  ).optional(),
+});
+
+export type OnboardGymBody = z.infer<typeof onboardGymBody>;

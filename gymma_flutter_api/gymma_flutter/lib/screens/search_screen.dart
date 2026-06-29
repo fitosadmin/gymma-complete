@@ -317,9 +317,26 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
+  List<MapEntry<String, List<GymSummary>>> get _groupedFiltered {
+    final list = _filtered;
+    final map = <String, List<GymSummary>>{};
+    for (final g in list) {
+      map.putIfAbsent(g.area, () => []).add(g);
+    }
+    final entries = map.entries.toList();
+    entries.sort((a, b) {
+      final aDist = a.value.map((e) => e.distanceKm ?? double.infinity).reduce((m, c) => c < m ? c : m);
+      final bDist = b.value.map((e) => e.distanceKm ?? double.infinity).reduce((m, c) => c < m ? c : m);
+      if (aDist == double.infinity && bDist == double.infinity) return a.key.compareTo(b.key);
+      return aDist.compareTo(bDist);
+    });
+    return entries;
+  }
+
   @override
   Widget build(BuildContext context) {
     final results = _filtered;
+    final grouped = _groupedFiltered.take(6).toList();
     return Scaffold(
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(
@@ -334,7 +351,6 @@ class _SearchScreenState extends State<SearchScreen> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
-                    textInputAction: TextInputAction.search,
                     onSubmitted: (v) => setState(() => _applied = v),
                     decoration: InputDecoration(
                       hintText: 'Search gyms…',
@@ -434,18 +450,37 @@ class _SearchScreenState extends State<SearchScreen> {
                             )
                           : results.isEmpty
                               ? _empty()
-                              : GridView.builder(
-                                  padding:
-                                      const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                                  gridDelegate:
-                                      const SliverGridDelegateWithMaxCrossAxisExtent(
-                                    maxCrossAxisExtent: 460,
-                                    mainAxisExtent: 320,
-                                    crossAxisSpacing: 14,
-                                    mainAxisSpacing: 14,
-                                  ),
-                                  itemCount: results.length,
-                                  itemBuilder: (_, i) => GymCard(results[i]),
+                              : ListView.builder(
+                                  padding: const EdgeInsets.only(bottom: 24),
+                                  itemCount: grouped.length,
+                                  itemBuilder: (_, i) {
+                                    final entry = grouped[i];
+                                    return Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Padding(
+                                          padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+                                          child: Text('Gyms in ${entry.key}',
+                                              style: const TextStyle(
+                                                  fontSize: 18,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: -0.5)),
+                                        ),
+                                        SizedBox(
+                                          height: 220,
+                                          child: ListView.separated(
+                                            scrollDirection: Axis.horizontal,
+                                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                                            itemCount: entry.value.length,
+                                            separatorBuilder: (_, __) => const SizedBox(width: 12),
+                                            itemBuilder: (_, j) => SizedBox(
+                                                width: 150,
+                                                child: GymCard(entry.value[j], compact: true)),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 ),
                     ),
                   ],

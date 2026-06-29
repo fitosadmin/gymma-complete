@@ -92,3 +92,20 @@ export async function updateDemoRequest(id: string, body: UpdateDemoRequestBody)
 export async function linkOwner(gymId: string, body: LinkOwnerBody) {
   await repo.linkOwner(gymId, body.userId, body.isPrimary);
 }
+
+export async function onboardDemoRequest(id: string) {
+  const req = await repo.getDemoRequestById(id);
+  if (!req) throw AppError.notFound('Demo request not found');
+  if (req.status === 'onboarded') throw AppError.badRequest('Already onboarded');
+  
+  // Create a unique slug from gym_name
+  const baseSlug = req.gym_name ? req.gym_name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'gym';
+  let slug = baseSlug;
+  let counter = 1;
+  while (await repo.slugExists(slug)) {
+    slug = `${baseSlug}-${counter}`;
+    counter++;
+  }
+
+  return repo.onboardGymTransaction(id, req, slug);
+}

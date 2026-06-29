@@ -16,10 +16,12 @@ dependencies:
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
   http: ^1.2.2
+  geolocator: ^14.0.2
 
 dev_dependencies:
   flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.14.1
+  rename: ^3.1.0
 
 # App launcher icon — matches the website (white dumbbell on orange #f97316).
 # Generate with:  dart run flutter_launcher_icons

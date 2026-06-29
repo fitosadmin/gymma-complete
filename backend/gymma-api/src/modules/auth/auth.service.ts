@@ -144,6 +144,25 @@ export async function loginWithGoogleForAdmin(idToken: string): Promise<AuthResu
   return issueTokens(user);
 }
 
+export async function loginWithGoogleForOwner(idToken: string): Promise<AuthResult> {
+  const profile = await verifyGoogleIdToken(idToken);
+
+  const user = await repo.findByEmail(profile.email);
+  if (!user) {
+    throw AppError.forbidden('Your email is not registered as a gym owner. Please contact support.');
+  }
+  if (user.role !== 'owner' && user.role !== 'admin' && user.role !== 'super_admin') {
+    throw AppError.forbidden('This Google account does not have owner access.');
+  }
+
+  if (!user.google_id) {
+    await repo.linkGoogleId(user.id, profile.googleId, profile.picture);
+  }
+
+  await repo.recordLoginSuccess(user.id);
+  return issueTokens(user);
+}
+
 export async function refresh(refreshToken: string): Promise<AuthResult> {
   const tokenHash = hashToken(refreshToken);
   const row = await repo.findRefreshToken(tokenHash);

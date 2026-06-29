@@ -18,6 +18,8 @@ class GymCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (compact) return _buildCompact(context);
+
     final dist = formatDistance(gym.distanceKm);
     final localIsOpen = checkIsOpenNow(gym.opensAt, gym.closesAt, fallback: gym.isOpenNow);
     final closesAtFormatted = formatTimeShort(gym.closesAt);
@@ -180,6 +182,64 @@ class GymCard extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompact(BuildContext context) {
+    return Material(
+      color: AppColors.neutral0,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        onTap: () => _open(context),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.neutral200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: GymImage(
+                  name: gym.name,
+                  src: gym.coverImage,
+                  radius: const BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      gym.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 12, color: AppColors.rating),
+                        const SizedBox(width: 2),
+                        Text(
+                          gym.rating.toStringAsFixed(1),
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+                        ),
+                        if (gym.isPremium) ...[
+                          const Spacer(),
+                          const Icon(Icons.workspace_premium, size: 12, color: AppColors.primary500),
+                        ],
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ],

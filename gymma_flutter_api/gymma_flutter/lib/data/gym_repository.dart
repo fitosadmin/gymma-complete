@@ -1,3 +1,5 @@
+import 'package:geolocator/geolocator.dart';
+
 import '../models/gym.dart';
 import 'api_client.dart';
 
@@ -20,9 +22,37 @@ class GymRepository {
   /// GET /gyms — fetched once and cached for the session.
   /// We pull a large page and let the existing screens filter/sort client-side,
   /// so the UX matches the web while the data is real.
-  Future<List<GymSummary>> getGyms({bool refresh = false}) async {
+  Future<List<GymSummary>> getGyms({bool refresh = false, double? lat, double? lng}) async {
     if (_gyms != null && !refresh) return _gyms!;
-    final data = await _api.getData('/gyms', query: {'limit': 100});
+    final query = <String, dynamic>{'limit': 100};
+    
+    double? reqLat = lat;
+    double? reqLng = lng;
+    
+    if (reqLat == null || reqLng == null) {
+      try {
+        final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+        if (serviceEnabled) {
+          var perm = await Geolocator.checkPermission();
+          if (perm == LocationPermission.denied) {
+            perm = await Geolocator.requestPermission();
+          }
+          if (perm == LocationPermission.whileInUse || perm == LocationPermission.always) {
+            final pos = await Geolocator.getCurrentPosition(
+              desiredAccuracy: LocationAccuracy.low,
+              timeLimit: const Duration(seconds: 5),
+            );
+            reqLat = pos.latitude;
+            reqLng = pos.longitude;
+          }
+        }
+      } catch (_) {}
+    }
+    
+    if (reqLat != null) query['lat'] = reqLat;
+    if (reqLng != null) query['lng'] = reqLng;
+    
+    final data = await _api.getData('/gyms', query: query);
     final list = (data as List)
         .map((e) => GymSummary.fromApi(e as Map<String, dynamic>))
         .toList();
@@ -110,6 +140,28 @@ class GymRepository {
           .take(3)
           .toList(),
     };
+  }
+
+  List<MapEntry<String, List<GymSummary>>> getGymsGroupedByArea() {
+    final g = _gyms ?? const <GymSummary>[];
+    if (g.isEmpty) return [];
+
+    final map = <String, List<GymSummary>>{};
+    for (final gym in g) {
+      map.putIfAbsent(gym.area, () => []).add(gym);
+    }
+
+    final entries = map.entries.toList();
+    entries.sort((a, b) {
+      final aDist = a.value.map((e) => e.distanceKm ?? double.infinity).reduce((min, curr) => curr < min ? curr : min);
+      final bDist = b.value.map((e) => e.distanceKm ?? double.infinity).reduce((min, curr) => curr < min ? curr : min);
+      if (aDist == double.infinity && bDist == double.infinity) {
+        return a.key.compareTo(b.key);
+      }
+      return aDist.compareTo(bDist);
+    });
+
+    return entries;
   }
 
   static List<GymSummary> sortGyms(List<GymSummary> gyms, SortKey sort) {

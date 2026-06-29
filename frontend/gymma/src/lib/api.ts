@@ -147,3 +147,14 @@ export async function getAllGymDetails(): Promise<GymDetail[]> {
   
   return details.filter(Boolean) as GymDetail[];
 }
+
+export async function loginWithGoogleForOwner(idToken: string) {
+  const res = await fetch(`${API_URL}/auth/google-owner`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken })
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error?.message || "Login failed");
+  return json.data;
+}

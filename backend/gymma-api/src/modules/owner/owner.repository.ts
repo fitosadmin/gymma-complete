@@ -1,6 +1,6 @@
 // src/modules/owner/owner.repository.ts
-import { query, queryOne } from '../../shared/db/query';
-import type { ListInquiriesQuery, UpdateGymBody } from './owner.schema';
+import { query, queryOne, withTransaction } from '../../shared/db/query';
+import type { ListInquiriesQuery, UpdateGymBody, OnboardGymBody } from './owner.schema';
 
 export interface OwnerGymRow {
   id: string;
@@ -149,4 +149,67 @@ export async function insertGalleryImages(
     if (row) out.push(row);
   }
   return out;
+}
+
+export async function onboardGymTransaction(gymId: string, data: OnboardGymBody): Promise<void> {
+  return withTransaction(async (client) => {
+    // 1. Update basic gym details and activate
+    await client.query(
+      `UPDATE gyms 
+       SET description = COALESCE($2, description),
+           opens_at = COALESCE($3, opens_at),
+           closes_at = COALESCE($4, closes_at),
+           is_active = true
+       WHERE id = $1`,
+      [gymId, data.description || null, data.opensAt || null, data.closesAt || null]
+    );
+
+    // 2. Clear old gallery and add new
+    if (data.photos && data.photos.length > 0) {
+      await client.query(`DELETE FROM gym_gallery WHERE gym_id = $1`, [gymId]);
+      for (let i = 0; i < data.photos.length; i++) {
+        await client.query(
+          `INSERT INTO gym_gallery (gym_id, url, caption, sort_order) VALUES ($1, $2, $3, $4)`,
+          [gymId, data.photos[i].url, data.photos[i].caption || null, i]
+        );
+      }
+    }
+
+    // 3. Clear old amenities and add new
+    if (data.amenities && data.amenities.length > 0) {
+      await client.query(`DELETE FROM gym_amenities WHERE gym_id = $1`, [gymId]);
+      for (const amenity of data.amenities) {
+        await client.query(
+          `INSERT INTO gym_amenities (gym_id, amenity) VALUES ($1, $2)`,
+          [gymId, amenity]
+        );
+      }
+    }
+
+    // 4. Clear old memberships and add new
+    if (data.membershipPlans && data.membershipPlans.length > 0) {
+      await client.query(`DELETE FROM membership_plans WHERE gym_id = $1`, [gymId]);
+      for (let i = 0; i < data.membershipPlans.length; i++) {
+        const p = data.membershipPlans[i];
+        await client.query(
+          `INSERT INTO membership_plans (gym_id, name, duration_months, price, sort_order) 
+           VALUES ($1, $2, $3, $4, $5)`,
+          [gymId, p.name, p.durationMonths, p.price, i]
+        );
+      }
+    }
+
+    // 5. Clear old trainers and add new
+    if (data.trainers && data.trainers.length > 0) {
+      await client.query(`DELETE FROM trainers WHERE gym_id = $1`, [gymId]);
+      for (let i = 0; i < data.trainers.length; i++) {
+        const t = data.trainers[i];
+        await client.query(
+          `INSERT INTO trainers (gym_id, name, specialization, sort_order, price_per_session) 
+           VALUES ($1, $2, $3, $4, 0)`,
+          [gymId, t.name, t.specialization || null, i]
+        );
+      }
+    }
+  });
 }

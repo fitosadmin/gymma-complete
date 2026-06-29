@@ -20,6 +20,7 @@ authRouter.post('/register', authLimiter, validate({ body: registerBody }), cont
 authRouter.post('/login', authLimiter, validate({ body: loginBody }), controller.login);
 authRouter.post('/google', authLimiter, validate({ body: googleBody }), controller.google);
 authRouter.post('/google-admin', authLimiter, validate({ body: googleAdminBody }), controller.googleAdmin);
+authRouter.post('/google-owner', authLimiter, validate({ body: googleAdminBody }), controller.googleOwner);
 authRouter.post('/refresh', validate({ body: refreshBody }), controller.refresh);
 authRouter.post('/logout', validate({ body: refreshBody }), controller.logout);
 authRouter.post(

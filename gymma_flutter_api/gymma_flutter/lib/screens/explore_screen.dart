@@ -4,8 +4,10 @@ import '../data/gym_repository.dart';
 import '../models/gym.dart';
 import '../theme.dart';
 import '../widgets/gym_card.dart';
+import '../widgets/common.dart';
 import 'search_screen.dart';
 import 'partner_screen.dart';
+import 'gym_detail_screen.dart';
 
 class ExploreScreen extends StatefulWidget {
   const ExploreScreen({super.key});
@@ -15,6 +17,7 @@ class ExploreScreen extends StatefulWidget {
 
 class _ExploreScreenState extends State<ExploreScreen> {
   Map<String, List<GymSummary>> _featured = const {};
+  List<GymSummary> _allGyms = [];
   bool _loading = true;
   String? _error;
 
@@ -30,9 +33,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
       _error = null;
     });
     try {
-      await GymRepository.instance.getGyms();
+      final gyms = await GymRepository.instance.getGyms();
       if (mounted) {
         setState(() {
+          _allGyms = gyms;
           _featured = GymRepository.instance.getFeatured();
           _loading = false;
         });
@@ -47,8 +51,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  void _toSearch([String q = '']) => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => SearchScreen(initialQuery: q)));
+  void _toSearch([String? q]) => Navigator.of(context)
+      .push(MaterialPageRoute(builder: (_) => SearchScreen(initialQuery: q ?? '')));
 
   @override
   Widget build(BuildContext context) {
@@ -80,7 +84,6 @@ class _ExploreScreenState extends State<ExploreScreen> {
               : CustomScrollView(
                   slivers: [
                     SliverToBoxAdapter(child: _hero()),
-                    SliverToBoxAdapter(child: _statsBar()),
                     _rail("Editor's pick", 'Top rated gyms',
                         _featured['topRated'] ?? []),
                     _rail('Closest to you', 'Gyms nearby',
@@ -96,113 +99,179 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   // ---- Hero ----
-  Widget _hero() => Container(
-        padding: const EdgeInsets.fromLTRB(20, 56, 20, 32),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.neutral900, AppColors.ink],
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(children: [
-              Container(
-                height: 36,
-                width: 36,
-                decoration: BoxDecoration(
-                    color: AppColors.primary500,
-                    borderRadius: BorderRadius.circular(AppRadius.md)),
-                child: const Icon(Icons.fitness_center,
-                    color: Colors.white, size: 20),
-              ),
-              const SizedBox(width: 10),
-              const Text('gymma',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.5)),
-            ]),
-            const SizedBox(height: 28),
-            const Text('Find your\nperfect gym.',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 34,
-                    fontWeight: FontWeight.w800,
-                    height: 1.1,
-                    letterSpacing: -1)),
-            const SizedBox(height: 12),
-            const Text(
-                'Discover, compare and join the best gyms across Bengaluru.',
-                style: TextStyle(
-                    color: Colors.white70, fontSize: 15, height: 1.5)),
-            const SizedBox(height: 22),
-            GestureDetector(
-              onTap: _toSearch,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-                decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(AppRadius.full)),
-                child: const Row(children: [
-                  Icon(Icons.search, color: AppColors.neutral500),
-                  SizedBox(width: 10),
-                  Text('Search gyms by name, area…',
-                      style:
-                          TextStyle(color: AppColors.neutral500, fontSize: 15)),
-                ]),
-              ),
+  Widget _hero() {
+    final statsIcons = [
+      Icons.fitness_center_rounded,
+      Icons.people_alt_rounded,
+      Icons.star_rounded,
+      Icons.location_city_rounded,
+    ];
+    final currentArea = _featured['nearby']?.isNotEmpty == true 
+      ? _featured['nearby']!.first.area 
+      : 'Bengaluru';
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
+      decoration: const BoxDecoration(
+        color: Color(0xFF141414), // Dark background
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Container(
+              height: 40,
+              width: 40,
+              decoration: BoxDecoration(
+                  color: AppColors.primary500,
+                  borderRadius: BorderRadius.circular(12)),
+              child: const Icon(Icons.fitness_center,
+                  color: Colors.white, size: 24),
             ),
-            const SizedBox(height: 14),
-            Wrap(spacing: 8, runSpacing: 8, children: [
-              for (final area in const [
-                'Koramangala',
-                'Indiranagar',
-                'Jayanagar',
-                'Malleshwaram'
-              ])
-                GestureDetector(
-                  onTap: () => _toSearch(area),
-                  child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
+            const SizedBox(width: 12),
+            const Text('Gymma',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5)),
+            const Spacer(),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(20)),
+              child: Row(children: [
+                const Icon(Icons.location_on, color: AppColors.primary500, size: 16),
+                const SizedBox(width: 6),
+                Text(currentArea, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(width: 4),
+                const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 16),
+              ]),
+            ),
+          ]),
+          const SizedBox(height: 24),
+          const Text.rich(TextSpan(
+            style: TextStyle(
+                fontSize: 34,
+                fontWeight: FontWeight.w800,
+                height: 1.1,
+                letterSpacing: -1.2),
+            children: [
+              TextSpan(text: 'Find your\n', style: TextStyle(color: Colors.white)),
+              TextSpan(text: 'perfect gym.', style: TextStyle(color: AppColors.primary500)),
+            ],
+          )),
+          const SizedBox(height: 12),
+          const Text(
+              'Discover, compare and join the\nbest gyms across Bengaluru.',
+              style: TextStyle(
+                  color: Colors.white70, fontSize: 14, height: 1.4)),
+          const SizedBox(height: 20),
+          RawAutocomplete<GymSummary>(
+            optionsBuilder: (TextEditingValue val) {
+              if (val.text.isEmpty) return const Iterable<GymSummary>.empty();
+              final q = val.text.toLowerCase();
+              return _allGyms.where((g) => '${g.name} ${g.area} ${g.city}'.toLowerCase().contains(q));
+            },
+            onSelected: (GymSummary g) {
+              Navigator.of(context).push(MaterialPageRoute(builder: (_) => GymDetailScreen(slug: g.slug)));
+            },
+            fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+              return TextField(
+                controller: controller,
+                focusNode: focusNode,
+                onSubmitted: (val) {
+                  onFieldSubmitted();
+                  _toSearch(val);
+                },
+                style: const TextStyle(color: AppColors.neutral700, fontSize: 15),
+                decoration: InputDecoration(
+                  hintText: 'Search gyms by name, area...',
+                  hintStyle: const TextStyle(color: AppColors.neutral400, fontSize: 14),
+                  prefixIcon: const Icon(Icons.search, color: AppColors.neutral500, size: 22),
+                  suffixIcon: IconButton(
+                    icon: const Icon(Icons.tune, color: AppColors.neutral500, size: 22),
+                    onPressed: () => _toSearch(controller.text),
+                  ),
+                  isDense: true,
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                  border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.full),
-                      border: Border.all(color: Colors.white24),
+                      borderSide: BorderSide.none),
+                ),
+              );
+            },
+            optionsViewBuilder: (context, onSelected, options) {
+              return Align(
+                alignment: Alignment.topLeft,
+                child: Material(
+                  elevation: 8,
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.white,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width - 40,
+                    constraints: const BoxConstraints(maxHeight: 250),
+                    child: ListView.builder(
+                      padding: EdgeInsets.zero,
+                      shrinkWrap: true,
+                      itemCount: options.length,
+                      itemBuilder: (context, index) {
+                        final g = options.elementAt(index);
+                        return ListTile(
+                          leading: SizedBox(
+                            width: 40, height: 40,
+                            child: GymImage(
+                              name: g.name,
+                              src: g.coverImage,
+                              radius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          title: Text(g.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                          subtitle: Text('${g.area}, ${g.city}'),
+                          onTap: () => onSelected(g),
+                        );
+                      },
                     ),
-                    child: Text(area,
-                        style: const TextStyle(
-                            color: Colors.white70, fontSize: 12)),
                   ),
                 ),
-            ]),
-          ],
-        ),
-      );
-
-  // ---- Stats ----
-  Widget _statsBar() => Container(
-        color: AppColors.neutral50,
-        padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: GymRepository.platformStats
-              .map((s) => Column(children: [
+              );
+            },
+          ),
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF1E1E1E), // Slightly lighter dark box
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: List.generate(4, (i) {
+                final s = GymRepository.platformStats[i];
+                return Column(
+                  children: [
+                    Icon(statsIcons[i], color: AppColors.primary500, size: 20),
+                    const SizedBox(height: 6),
                     Text(s.$1,
                         style: const TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.w800)),
+                            color: Colors.white,
+                            fontSize: 16, fontWeight: FontWeight.w800)),
                     const SizedBox(height: 2),
                     Text(s.$2,
                         style: const TextStyle(
-                            color: AppColors.neutral500, fontSize: 11)),
-                  ]))
-              .toList(),
-        ),
-      );
+                            color: Colors.white70, fontSize: 11)),
+                  ],
+                );
+              }),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   // ---- Featured rail ----
   Widget _rail(String eyebrow, String title, List<GymSummary> gyms) =>

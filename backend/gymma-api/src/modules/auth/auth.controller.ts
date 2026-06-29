@@ -35,6 +35,12 @@ export const googleAdmin = asyncHandler(async (req: Request, res: Response) => {
   res.json(success(result));
 });
 
+export const googleOwner = asyncHandler(async (req: Request, res: Response) => {
+  const { idToken } = req.body as GoogleAdminBody; // reusing the same body schema since it just needs idToken
+  const result = await service.loginWithGoogleForOwner(idToken);
+  res.json(success(result));
+});
+
 export const refresh = asyncHandler(async (req: Request, res: Response) => {
   const { refreshToken } = req.body as RefreshBody;
   const result = await service.refresh(refreshToken);

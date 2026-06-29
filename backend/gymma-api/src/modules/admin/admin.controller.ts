@@ -50,3 +50,8 @@ export const linkOwner = asyncHandler(async (req: Request, res: Response) => {
   await service.linkOwner(req.params.id, req.body as LinkOwnerBody);
   res.status(201).json(success({ linked: true }));
 });
+
+export const onboardDemoRequest = asyncHandler(async (req: Request, res: Response) => {
+  const result = await service.onboardDemoRequest(req.params.id);
+  res.json(success(result));
+});

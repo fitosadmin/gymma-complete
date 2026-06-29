@@ -35,3 +35,8 @@ adminRouter.patch(
   validate({ params: idParam, body: updateDemoRequestBody }),
   controller.updateDemoRequest,
 );
+adminRouter.post(
+  '/demo-requests/:id/onboard',
+  validate({ params: idParam }),
+  controller.onboardDemoRequest,
+);

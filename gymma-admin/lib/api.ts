@@ -1,6 +1,6 @@
 // lib/api.ts — all calls to the Gymma backend
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8085/api/v1";
+const API = process.env.NEXT_PUBLIC_API_URL ?? "https://gymma-api.onrender.com/api/v1";
 
 export interface AdminUser {
   id: string;
@@ -103,4 +103,15 @@ export async function listInquiries(
   const json = await res.json();
   if (!res.ok) throw new Error(json?.error?.message ?? "Failed to fetch inquiries");
   return { data: json.data, meta: json.meta };
+}
+
+export async function onboardDemoRequest(token: string, id: string): Promise<void> {
+  const res = await fetch(`${API}/admin/demo-requests/${id}/onboard`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const json = await res.json();
+    throw new Error(json?.error?.message ?? "Failed to onboard lead");
+  }
 }

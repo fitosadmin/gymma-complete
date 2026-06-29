@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { getAccessToken, getUser, clearSession } from "@/lib/auth";
-import { listDemoRequests, updateDemoRequest, listInquiries } from "@/lib/api";
+import { listDemoRequests, updateDemoRequest, listInquiries, onboardDemoRequest } from "@/lib/api";
 import type { DemoRequest, Inquiry, DemoStatus } from "@/lib/api";
 import {
   LayoutDashboard, Users, MessageSquare, LogOut, RefreshCw,
@@ -107,6 +107,21 @@ export default function DashboardPage() {
       setLeads((prev) => prev.map((l) => l.id === id ? { ...l, status } : l));
     } catch { /* ignore */ }
     finally { setUpdatingId(null); }
+  }
+
+  async function handleOnboard(id: string) {
+    if (!token) return;
+    if (!confirm("Are you sure you want to onboard this lead? This will create a gym owner account and start their onboarding process.")) return;
+    setUpdatingId(id);
+    try {
+      await onboardDemoRequest(token, id);
+      alert("Successfully onboarded!");
+      fetchLeads();
+    } catch (err: any) {
+      alert("Failed to onboard: " + err.message);
+    } finally {
+      setUpdatingId(null);
+    }
   }
 
   function handleLogout() {
@@ -257,7 +272,7 @@ export default function DashboardPage() {
                             <td style={{ color: "var(--text-muted)" }}>{[lead.area, lead.city].filter(Boolean).join(", ") || "—"}</td>
                             <td style={{ color: "var(--text-muted)" }}>{lead.memberCount ?? "—"}</td>
                             <td>
-                              <div style={{ position: "relative" }}>
+                              <div style={{ position: "relative", display: "flex", gap: "8px", alignItems: "center" }}>
                                 <select
                                   className="select"
                                   value={lead.status}
@@ -269,6 +284,20 @@ export default function DashboardPage() {
                                     <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
                                   ))}
                                 </select>
+                                {lead.status !== "converted" && lead.status !== "rejected" && (
+                                  <button
+                                    onClick={() => handleOnboard(lead.id)}
+                                    disabled={updatingId === lead.id}
+                                    style={{
+                                      height: 30, padding: "0 10px", fontSize: 12,
+                                      background: "var(--accent)", color: "#fff",
+                                      border: "none", borderRadius: "6px", cursor: "pointer",
+                                      fontWeight: 600
+                                    }}
+                                  >
+                                    Onboard
+                                  </button>
+                                )}
                               </div>
                             </td>
                             <td style={{ color: "var(--text-muted)", whiteSpace: "nowrap" }}>{formatDate(lead.createdAt)}</td>

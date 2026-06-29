@@ -3,7 +3,7 @@ import type { Request, Response } from 'express';
 import { success } from '../../shared/response/envelope';
 import { asyncHandler } from '../../shared/utils/asyncHandler';
 import * as service from './owner.service';
-import type { ListInquiriesQuery, UpdateInquiryBody, UpdateGymBody } from './owner.schema';
+import type { ListInquiriesQuery, UpdateInquiryBody, UpdateGymBody, OnboardGymBody } from './owner.schema';
 
 export const listGyms = asyncHandler(async (req: Request, res: Response) => {
   const gyms = await service.listGyms(req.user!.id);
@@ -30,6 +30,11 @@ export const updateInquiry = asyncHandler(async (req: Request, res: Response) =>
 export const updateGym = asyncHandler(async (req: Request, res: Response) => {
   await service.updateGymProfile(req.params.gymId, req.body as UpdateGymBody);
   res.json(success({ updated: true }));
+});
+
+export const onboardGym = asyncHandler(async (req: Request, res: Response) => {
+  await service.onboardGym(req.params.gymId, req.body as OnboardGymBody);
+  res.json(success({ onboarded: true }));
 });
 
 export const uploadGallery = asyncHandler(async (req: Request, res: Response) => {

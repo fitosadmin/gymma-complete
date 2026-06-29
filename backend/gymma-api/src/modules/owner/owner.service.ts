@@ -4,7 +4,7 @@ import { buildMeta } from '../../shared/utils/pagination';
 import type { PaginationMeta } from '../../shared/response/envelope';
 import { uploadImage } from '../../shared/storage/s3';
 import * as repo from './owner.repository';
-import type { ListInquiriesQuery, UpdateGymBody } from './owner.schema';
+import type { ListInquiriesQuery, UpdateGymBody, OnboardGymBody } from './owner.schema';
 
 function pctDelta(current: number, prev: number): number {
   if (prev === 0) return current > 0 ? 100 : 0;
@@ -89,4 +89,8 @@ export async function addGalleryImages(
     urls.push(await uploadImage(f.buffer, `gyms/${gymId}/gallery`));
   }
   return repo.insertGalleryImages(gymId, urls);
+}
+
+export async function onboardGym(gymId: string, data: OnboardGymBody): Promise<void> {
+  await repo.onboardGymTransaction(gymId, data);
 }

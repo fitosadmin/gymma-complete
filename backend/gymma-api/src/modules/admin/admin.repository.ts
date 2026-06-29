@@ -159,3 +159,54 @@ export async function slugExists(slug: string): Promise<boolean> {
   const row = await queryOne<{ id: string }>('SELECT id FROM gyms WHERE slug = $1', [slug]);
   return row != null;
 }
+
+export async function getDemoRequestById(id: string) {
+  return queryOne<any>(`SELECT * FROM demo_requests WHERE id = $1`, [id]);
+}
+
+export async function onboardGymTransaction(
+  demoRequestId: string,
+  demoRequest: any,
+  gymSlug: string
+) {
+  return withTransaction(async (client) => {
+    // 1. Update demo request
+    await client.query(
+      `UPDATE demo_requests SET status = 'onboarded', updated_at = NOW() WHERE id = $1`,
+      [demoRequestId]
+    );
+
+    // 2. Create gym (inactive by default, until owner fills it)
+    // Providing default coordinates for lat/lng and price to satisfy NOT NULL constraints
+    const gymRes = await client.query(
+      `INSERT INTO gyms (slug, name, city, area, is_active, lat, lng, price_per_month)
+       VALUES ($1, $2, $3, $4, false, 12.9716, 77.5946, 0) RETURNING id`,
+      [gymSlug, demoRequest.gym_name, demoRequest.city, demoRequest.area]
+    );
+    const gymId = gymRes.rows[0].id;
+
+    // 3. Find or create user
+    const userRes = await client.query(`SELECT id FROM users WHERE email = $1`, [demoRequest.email]);
+    let userId;
+    if (userRes.rows.length > 0) {
+      userId = userRes.rows[0].id;
+      await client.query(`UPDATE users SET role = 'owner' WHERE id = $1`, [userId]);
+    } else {
+      const newU = await client.query(
+        `INSERT INTO users (email, full_name, phone, role)
+         VALUES ($1, $2, $3, 'owner') RETURNING id`,
+        [demoRequest.email, demoRequest.name, demoRequest.phone]
+      );
+      userId = newU.rows[0].id;
+    }
+
+    // 4. Link owner
+    await client.query(
+      `INSERT INTO owner_gym_links (user_id, gym_id, is_primary)
+       VALUES ($1, $2, true) ON CONFLICT DO NOTHING`,
+      [userId, gymId]
+    );
+
+    return { gymId, userId };
+  });
+}

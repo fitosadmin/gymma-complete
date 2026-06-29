@@ -110,7 +110,7 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
     }
     final g = d.summary;
     final mapsUri = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${g.lat},${g.lng}');
+        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent('${g.name} ${g.area} ${g.city}')}');
     final waUri =
         Uri.parse('https://wa.me/${d.whatsapp.replaceAll(RegExp(r'\D'), '')}');
     final telUri = Uri.parse('tel:${d.phone}');
@@ -135,14 +135,19 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
             foregroundColor: Colors.white,
             flexibleSpace: FlexibleSpaceBar(
               background: Stack(fit: StackFit.expand, children: [
-                GymImage(name: g.name, src: g.coverImage, aspectRatio: 16 / 9),
-                const DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Colors.black26, Colors.transparent],
-                      stops: [0, 0.4],
+                _Slideshow(
+                  gymName: g.name,
+                  images: [if (g.coverImage != null) g.coverImage!, ...d.gallery],
+                ),
+                const IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Colors.black26, Colors.transparent],
+                        stops: [0, 0.4],
+                      ),
                     ),
                   ),
                 ),
@@ -244,41 +249,7 @@ class _GymDetailScreenState extends State<GymDetailScreen> {
                       )),
 
                   // gallery
-                  if (d.gallery.isNotEmpty)
-                    _section('Gallery',
-                        child: SizedBox(
-                          height: 120,
-                          child: ListView.separated(
-                            scrollDirection: Axis.horizontal,
-                            itemCount: d.gallery.length,
-                            separatorBuilder: (_, __) =>
-                                const SizedBox(width: 10),
-                            itemBuilder: (_, i) {
-                              final item = d.gallery[i];
-                              final isUrl = item.startsWith('http');
-                              return ClipRRect(
-                                borderRadius:
-                                    BorderRadius.circular(AppRadius.md),
-                                child: SizedBox(
-                                  width: 160,
-                                  child: isUrl
-                                      ? GymImage(
-                                          name: g.name,
-                                          src: item,
-                                          aspectRatio: 4 / 3)
-                                      : Container(
-                                          color: AppColors.neutral100,
-                                          alignment: Alignment.center,
-                                          child: Text(item,
-                                              style: const TextStyle(
-                                                  color: AppColors.neutral500,
-                                                  fontWeight: FontWeight.w600)),
-                                        ),
-                                ),
-                              );
-                            },
-                          ),
-                        )),
+                  // gallery removed
 
                   // trainers
                   _section('Trainers',
@@ -763,6 +734,63 @@ class _InquirySheetState extends State<_InquirySheet> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _Slideshow extends StatefulWidget {
+  final List<String> images;
+  final String gymName;
+  const _Slideshow({required this.images, required this.gymName});
+
+  @override
+  State<_Slideshow> createState() => _SlideshowState();
+}
+
+class _SlideshowState extends State<_Slideshow> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.images.isEmpty) {
+      return GymImage(name: widget.gymName, src: null, aspectRatio: 16 / 9);
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          itemCount: widget.images.length,
+          onPageChanged: (i) => setState(() => _currentIndex = i),
+          itemBuilder: (_, i) => GymImage(
+            name: widget.gymName,
+            src: widget.images[i],
+            aspectRatio: 16 / 9,
+          ),
+        ),
+        if (widget.images.length > 1)
+          Positioned(
+            bottom: 30, // Above the gradient/border
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(
+                  widget.images.length,
+                  (i) => Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: _currentIndex == i ? 18 : 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: _currentIndex == i ? AppColors.primary500 : Colors.white54,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

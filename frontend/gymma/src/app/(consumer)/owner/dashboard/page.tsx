@@ -1,6 +1,8 @@
+"use client";
+
 import * as React from "react";
 import Link from "next/link";
-import type { Metadata } from "next";
+import { useRouter } from "next/navigation";
 import {
   Eye, MessageSquare, Star, Users, ArrowUpRight, ExternalLink,
   ImagePlus, Bell, Pencil, TrendingUp,
@@ -8,11 +10,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { AnnouncementComposer } from "@/components/owner/announcement-composer";
 import { cn } from "@/lib/utils";
-
-export const metadata: Metadata = {
-  title: "Owner dashboard",
-  description: "Manage your gym profile, view analytics, and engage members.",
-};
 
 const GYM = { name: "Iron Temple Fitness", area: "Indiranagar, Bengaluru", slug: "iron-temple-indiranagar", completion: 80 };
 
@@ -44,6 +41,21 @@ const ACTIONS = [
 ];
 
 export default function OwnerDashboardPage() {
+  const router = useRouter();
+  const [isAuth, setIsAuth] = React.useState(false);
+
+  React.useEffect(() => {
+    import("@/lib/auth").then(({ isAuthenticated }) => {
+      if (!isAuthenticated()) {
+        router.replace("/owner/login");
+      } else {
+        setIsAuth(true);
+      }
+    });
+  }, [router]);
+
+  if (!isAuth) return null;
+
   return (
     <div className="bg-neutral-50">
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
