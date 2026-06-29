@@ -16,6 +16,10 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
   const [submitting, setSubmitting] = useState(false);
 
   const fetchMembers = async () => {
+    if (gymId === "no-gym") {
+      setLoading(false);
+      return;
+    }
     try {
       const data = await listMembers(gymId, token);
       setMembers(data);
@@ -50,6 +54,18 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-neutral-400" />
+      </div>
+    );
+  }
+
+  if (gymId === "no-gym") {
+    return (
+      <div className="flex flex-col gap-6 mt-6">
+        <div className="rounded-xl border border-neutral-200 bg-white overflow-hidden p-8 text-center">
+          <Users className="mx-auto h-12 w-12 text-neutral-300 mb-3" />
+          <p className="text-neutral-500 font-medium">You need to onboard your gym first!</p>
+          <p className="text-caption text-neutral-400 mt-1">Please complete the gym setup to start adding members.</p>
+        </div>
       </div>
     );
   }

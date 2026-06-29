@@ -37,9 +37,10 @@ const statusStyle: Record<string, string> = {
 };
 
 const ACTIONS = [
-  { icon: Pencil, label: "Edit profile" },
-  { icon: ImagePlus, label: "Upload photos" },
-  { icon: Bell, label: "Push notification" },
+  { icon: Users, label: "Add new member", id: "add_member" },
+  { icon: Pencil, label: "Edit profile", id: "edit_profile" },
+  { icon: ImagePlus, label: "Upload photos", id: "upload_photos" },
+  { icon: Bell, label: "Push notification", id: "push_notification" },
 ];
 
 export default function OwnerDashboardPage() {
@@ -59,7 +60,8 @@ export default function OwnerDashboardPage() {
         setIsAuth(true);
         listOwnerGyms(t).then((gyms: any[]) => {
           if (gyms.length > 0) setGymId(gyms[0].id);
-        }).catch(console.error);
+          else setGymId("no-gym");
+        }).catch(() => setGymId("no-gym"));
       }
     });
   }, [router]);
@@ -81,15 +83,19 @@ export default function OwnerDashboardPage() {
             <h1 className="mt-1 text-2xl font-semibold tracking-tight text-neutral-900">{GYM.name}</h1>
             <p className="text-sm text-neutral-500">{GYM.area}</p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0">
+            <Button size="sm" onClick={() => setActiveTab("members")}>
+              <Users className="h-3.5 w-3.5 mr-1" />
+              Add Member
+            </Button>
             <Link href={`/gym/${GYM.slug}`}>
               <Button variant="secondary" size="sm">
-                <ExternalLink className="h-3.5 w-3.5" />
+                <ExternalLink className="h-3.5 w-3.5 mr-1" />
                 View public page
               </Button>
             </Link>
-            <Button size="sm">
-              <Pencil className="h-3.5 w-3.5" />
+            <Button variant="secondary" size="sm">
+              <Pencil className="h-3.5 w-3.5 mr-1" />
               Edit profile
             </Button>
           </div>
@@ -193,9 +199,12 @@ export default function OwnerDashboardPage() {
             <div className="rounded-xl border border-neutral-200 bg-white p-5">
               <h3 className="font-semibold text-neutral-900">Quick actions</h3>
               <div className="mt-4 grid grid-cols-1 gap-2">
-                {ACTIONS.map(({ icon: Icon, label }) => (
+                {ACTIONS.map(({ icon: Icon, label, id }) => (
                   <button
                     key={label}
+                    onClick={() => {
+                      if (id === "add_member") setActiveTab("members");
+                    }}
                     className="flex items-center gap-3 rounded-lg border border-neutral-200 px-4 py-3 text-left text-sm text-neutral-700 transition-colors hover:border-neutral-400 hover:text-neutral-900"
                   >
                     <Icon className="h-4 w-4 text-neutral-500" />
