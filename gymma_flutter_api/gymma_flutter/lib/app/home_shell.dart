@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../data/auth_service.dart';
 import '../screens/explore_screen.dart';
 import '../screens/search_screen.dart';
 import '../screens/compare_screen.dart';
-import '../screens/owner_dashboard_screen.dart';
+import '../screens/login_screen.dart';
+import '../screens/member_dashboard_screen.dart';
 import '../theme.dart';
 
 class HomeShell extends StatefulWidget {
@@ -16,17 +18,32 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  final _pages = const [
-    ExploreScreen(),
-    SearchScreen(),
-    CompareScreen(),
-    OwnerDashboardScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    AuthService.instance.init();
+    AuthService.instance.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (!AuthService.instance.isInitialized) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
+    final pages = [
+      const ExploreScreen(),
+      const SearchScreen(),
+      const CompareScreen(),
+      AuthService.instance.isAuthenticated
+          ? const MemberDashboardScreen()
+          : const LoginScreen(),
+    ];
+
     return Scaffold(
-      body: IndexedStack(index: _index, children: _pages),
+      body: IndexedStack(index: _index, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
@@ -49,9 +66,9 @@ class _HomeShellState extends State<HomeShell> {
             label: 'Compare',
           ),
           NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Owner',
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Profile',
           ),
         ],
       ),

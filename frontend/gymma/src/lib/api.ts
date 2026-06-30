@@ -161,7 +161,8 @@ export async function loginWithGoogleForOwner(idToken: string) {
 
 export async function listOwnerGyms(token: string) {
   const res = await fetch(`${API_URL}/owner/gyms`, {
-    headers: { "Authorization": `Bearer ${token}` }
+    headers: { "Authorization": `Bearer ${token}` },
+    cache: "no-store",
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error?.message || "Failed to fetch gyms");
@@ -170,7 +171,8 @@ export async function listOwnerGyms(token: string) {
 
 export async function listMembers(gymId: string, token: string) {
   const res = await fetch(`${API_URL}/owner/gyms/${gymId}/members`, {
-    headers: { "Authorization": `Bearer ${token}` }
+    headers: { "Authorization": `Bearer ${token}` },
+    cache: "no-store",
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error?.message || "Failed to fetch members");

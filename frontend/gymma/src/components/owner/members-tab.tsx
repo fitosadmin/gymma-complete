@@ -84,36 +84,52 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
       </div>
 
       {showAdd && (
-        <div className="rounded-xl border border-neutral-200 bg-white p-5">
-          <h3 className="font-semibold text-neutral-900 mb-4">Add New Member</h3>
-          <form onSubmit={handleAdd} className="flex flex-col gap-4 max-w-md">
-            <div>
-              <label className="block text-sm font-medium text-neutral-700">Full Name</label>
-              <input
-                required
-                type="text"
-                className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm border px-3 py-2"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-              />
+        <div className="rounded-xl border border-neutral-200 bg-white p-6 shadow-sm mb-6 max-w-2xl">
+          <div className="mb-5 border-b border-neutral-100 pb-4">
+            <h3 className="text-lg font-semibold text-neutral-900">Add New Member</h3>
+            <p className="text-sm text-neutral-500">Enter member details to enroll them.</p>
+          </div>
+          <form onSubmit={handleAdd} className="flex flex-col gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Full Name</label>
+                <input
+                  required
+                  type="text"
+                  placeholder="e.g. Rahul Sharma"
+                  className="block w-full rounded-md border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm border px-3 py-2.5"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">Phone Number</label>
+                <input
+                  required
+                  type="tel"
+                  placeholder="e.g. 9876543210"
+                  className="block w-full rounded-md border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm border px-3 py-2.5"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-neutral-700">Phone Number</label>
-              <input
-                required
-                type="tel"
-                className="mt-1 block w-full rounded-md border-neutral-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm border px-3 py-2"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
+            <div className="rounded-md bg-blue-50 p-3 flex gap-2 items-start border border-blue-100">
+              <Users className="h-4 w-4 text-blue-500 mt-0.5" />
+              <p className="text-sm text-blue-800">
+                The member can log into the Gymma mobile app using this phone number and the default password <strong>Gymma@1234</strong>.
+              </p>
             </div>
-            <p className="text-caption text-neutral-500">
-              Note: The default password for new members is <strong>Gymma@1234</strong>
-            </p>
-            <div className="flex justify-end gap-3 mt-2">
-              <Button type="button" variant="secondary" onClick={() => setShowAdd(false)}>Cancel</Button>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button type="button" variant="ghost" onClick={() => setShowAdd(false)}>Cancel</Button>
               <Button type="submit" disabled={submitting}>
-                {submitting ? "Adding..." : "Add Member"}
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Adding...
+                  </>
+                ) : (
+                  "Add Member"
+                )}
               </Button>
             </div>
           </form>

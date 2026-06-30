@@ -3,9 +3,9 @@ import { randomBytes, createHash } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { env } from '../../config/env';
 
-export interface AccessPayload {
+export interface AccessPayload extends jwt.JwtPayload {
   sub: string;
-  role: 'owner' | 'admin' | 'super_admin';
+  role: 'owner' | 'admin' | 'super_admin' | 'member';
 }
 
 export function signAccessToken(payload: AccessPayload): string {

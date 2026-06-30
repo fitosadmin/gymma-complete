@@ -14,7 +14,7 @@ export const registerBody = z.object({
 });
 
 export const loginBody = z.object({
-  email: z.string().trim().email().max(200).toLowerCase(),
+  identifier: z.string().trim().min(1),
   password: z.string().min(1),
 });
 

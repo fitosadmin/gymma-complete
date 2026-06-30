@@ -4,9 +4,10 @@ import { query, queryOne } from '../../shared/db/query';
 export interface UserRow {
   id: string;
   email: string;
+  phone: string | null;
   email_verified: boolean;
   password_hash: string | null;
-  role: 'owner' | 'admin' | 'super_admin';
+  role: 'owner' | 'admin' | 'super_admin' | 'member';
   google_id: string | null;
   full_name: string | null;
   avatar_url: string | null;
@@ -19,6 +20,13 @@ export async function findByEmail(email: string): Promise<UserRow | null> {
   return queryOne<UserRow>(
     'SELECT * FROM users WHERE email = $1 AND deleted_at IS NULL',
     [email],
+  );
+}
+
+export async function findByIdentifier(identifier: string): Promise<UserRow | null> {
+  return queryOne<UserRow>(
+    'SELECT * FROM users WHERE (email = $1 OR phone = $1) AND deleted_at IS NULL',
+    [identifier],
   );
 }
 

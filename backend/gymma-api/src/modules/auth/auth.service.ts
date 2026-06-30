@@ -73,12 +73,12 @@ export async function register(input: {
 }
 
 export async function login(input: {
-  email: string;
+  identifier: string;
   password: string;
 }): Promise<AuthResult> {
-  const user = await repo.findByEmail(input.email);
+  const user = await repo.findByIdentifier(input.identifier);
   // generic error to avoid account enumeration
-  const invalid = AppError.unauthorized('Invalid email or password');
+  const invalid = AppError.unauthorized('Invalid credentials');
 
   if (!user || !user.password_hash) throw invalid;
 

@@ -64,6 +64,8 @@ class ApiClient {
   final http.Client _http = http.Client();
   static const Duration _timeout = Duration(seconds: 45);
 
+  static String? authToken;
+
   Uri _uri(String path, [Map<String, dynamic>? query]) {
     final base = kApiBaseUrl.endsWith('/')
         ? kApiBaseUrl.substring(0, kApiBaseUrl.length - 1)
@@ -79,12 +81,21 @@ class ApiClient {
     );
   }
 
+  Map<String, String> _headers() {
+    final h = <String, String>{
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
+    };
+    if (authToken != null) {
+      h['Authorization'] = 'Bearer $authToken';
+    }
+    return h;
+  }
+
   /// GET → returns the unwrapped `data`. [meta] (pagination) is ignored here.
   Future<dynamic> getData(String path, {Map<String, dynamic>? query}) async {
     final uri = _uri(path, query);
-    return _send(() => _http.get(uri, headers: const {
-          'Accept': 'application/json',
-        }));
+    return _send(() => _http.get(uri, headers: _headers()));
   }
 
   /// POST a JSON body → returns the unwrapped `data`.
@@ -92,10 +103,7 @@ class ApiClient {
     final uri = _uri(path);
     return _send(() => _http.post(
           uri,
-          headers: const {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          },
+          headers: _headers(),
           body: jsonEncode(body),
         ));
   }

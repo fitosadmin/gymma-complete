@@ -81,7 +81,7 @@ export default function OwnerDashboardPage() {
               {gym ? gym.name : (gymId === "no-gym" ? "No Gym Found" : "Loading...")}
             </h1>
             <p className="mt-1 text-sm text-neutral-500">
-              {gym ? `${gym.city}, ${gym.area}` : "Manage your gym and members."}
+              {gym ? `${gym.city ?? "Bengaluru"}, ${gym.area ?? "Unknown Area"}` : "Manage your gym and members."}
             </p>
           </div>
           <div className="flex items-center gap-3">
