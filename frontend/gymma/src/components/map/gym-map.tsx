@@ -25,7 +25,7 @@ export interface GymMapProps {
 
 export function GymMap({ gyms, selectedId, onSelect, className, userLocation }: GymMapProps) {
   return (
-    <div className={cn("overflow-hidden rounded-lg border border-neutral-200", className)}>
+    <div className={cn("relative z-0 overflow-hidden rounded-lg border border-neutral-200", className)}>
       <LeafletMap gyms={gyms} selectedId={selectedId} onSelect={onSelect} userLocation={userLocation} />
     </div>
   );

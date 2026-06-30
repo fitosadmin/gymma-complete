@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, ArrowLeft, Upload, CheckCircle2, Shield, Plus, Trash2, Camera, Dumbbell, Droplets } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 
 // The endpoint for uploading photos (we will just mock it on frontend or use a base64 string for this exercise)
@@ -120,7 +121,7 @@ export default function OnboardingPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {categoryPhotos.map((photo, idx) => (
             <div key={idx} className="relative aspect-square rounded-lg overflow-hidden border border-neutral-200 group">
-              <img src={photo.url} alt="upload preview" className="w-full h-full object-cover" />
+              <Image src={photo.url} alt="upload preview" fill className="object-cover" />
               <button 
                 onClick={() => {
                   setFormData(prev => ({

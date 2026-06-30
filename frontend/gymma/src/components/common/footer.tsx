@@ -6,8 +6,8 @@ const COLUMNS: Record<string, { label: string; href: string }[]> = {
   Discover: [
     { label: "Find a gym", href: "/search" },
     { label: "Compare gyms", href: "/compare" },
-    { label: "Top rated", href: "/explore?sort=rating" },
-    { label: "Budget gyms", href: "/explore?sort=price_asc" },
+    { label: "Top rated", href: "/search?sort=rating" },
+    { label: "Budget gyms", href: "/search?sort=price_asc" },
   ],
   Company: [
     { label: "About", href: "/about" },
@@ -53,7 +53,7 @@ export function Footer() {
           ))}
         </div>
 
-        <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-neutral-100 pt-6 sm:flex-row">
+        <div className="mt-14 flex flex-col items-center justify-between gap-4 border-t border-neutral-100 pt-6 text-center sm:flex-row sm:text-left">
           <p className="max-w-2xl text-xs text-neutral-400">
             Ratings and reviews are submitted by users. Visit gyms personally before purchasing a membership.
           </p>

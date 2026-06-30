@@ -101,7 +101,7 @@ export function GymCard({ gym, priority, className }: GymCardProps) {
         <div className="relative z-10 mt-auto flex gap-2 border-t border-neutral-100 pt-3">
           <Link
             href={`/gym/${gym.slug}`}
-            className="flex-1 rounded-md bg-ink py-2.5 text-center text-button text-white transition-all duration-150 ease-ease-out-custom hover:bg-ink-hover active:scale-[0.99]"
+            className="flex-1 rounded-md bg-ink py-2.5 text-center text-button text-white transition-all duration-150 ease-ease-out-custom hover:bg-neutral-800 active:scale-[0.99]"
           >
             View details
           </Link>

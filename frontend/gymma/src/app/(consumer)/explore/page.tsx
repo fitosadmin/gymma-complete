@@ -11,16 +11,22 @@ import { OwnerCTA } from "@/components/landing/owner-cta";
 import { ContactSection } from "@/components/landing/contact-section";
 import { GymGridSkeleton } from "@/components/ui/skeleton";
 import { getFeatured } from "@/lib/api";
+import type { GymSummary } from "@/types/gym";
 
 interface UserLocation {
   lat: number;
   lng: number;
   label: string;
 }
+interface FeaturedGymsResponse {
+  topRated: GymSummary[];
+  nearby: GymSummary[];
+  affordable: GymSummary[];
+}
 
 export default function ExplorePage() {
   const [userLocation, setUserLocation] = React.useState<UserLocation | null>(null);
-  const [f, setF] = React.useState<any>(null);
+  const [f, setF] = React.useState<FeaturedGymsResponse | null>(null);
 
   React.useEffect(() => {
     getFeatured().then(setF).catch(console.error);

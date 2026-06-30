@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Mail, Phone, Clock } from "lucide-react";
+import { Mail, Phone, Clock, Loader2 } from "lucide-react";
 
 export function ContactSection() {
   const [sent, setSent] = React.useState(false);
@@ -10,9 +10,15 @@ export function ContactSection() {
   const [subject, setSubject] = React.useState("");
   const [message, setMessage] = React.useState("");
 
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSent(true);
+    setIsSubmitting(true);
+    setTimeout(() => {
+      setIsSubmitting(false);
+      setSent(true);
+    }, 600);
   }
 
   const inputCls =
@@ -127,9 +133,14 @@ export function ContactSection() {
                 />
                 <button
                   type="submit"
-                  className="h-12 w-full rounded-xl bg-neutral-900 text-sm font-semibold text-white transition-colors hover:bg-neutral-700"
+                  disabled={isSubmitting}
+                  className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-neutral-900 text-sm font-semibold text-white transition-colors hover:bg-neutral-700 disabled:opacity-70"
                 >
-                  Send message
+                  {isSubmitting ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Sending...</>
+                  ) : (
+                    "Send message"
+                  )}
                 </button>
               </form>
             )}
