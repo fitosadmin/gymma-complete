@@ -14,6 +14,11 @@ const String _fallbackBaseUrl = 'https://gymma-api.onrender.com/api/v1';
 const String kApiBaseUrl =
     String.fromEnvironment('API_BASE_URL', defaultValue: _fallbackBaseUrl);
 
+const String _fallbackFitosBaseUrl = 'https://fitos-api.onrender.com/api/v1';
+
+const String kFitosBaseUrl =
+    String.fromEnvironment('FITOS_BASE_URL', defaultValue: _fallbackFitosBaseUrl);
+
 /// =============================================================================
 /// Gym photos are stored in the DB as RELATIVE paths (e.g.
 /// /images/gyms/fitness-solutions_0.jpg) and the actual .jpg files are served
@@ -28,6 +33,11 @@ const String _fallbackImageBaseUrl = 'https://gymma-seven.vercel.app';
 
 const String kImageBaseUrl = String.fromEnvironment('IMAGE_BASE_URL',
     defaultValue: _fallbackImageBaseUrl);
+
+enum BackendTarget {
+  core,
+  fitos,
+}
 
 /// Turns a possibly-relative image path into an absolute URL the app can load.
 /// Absolute http(s) URLs (or non-path placeholder labels) are returned as-is.
@@ -66,10 +76,11 @@ class ApiClient {
 
   static String? authToken;
 
-  Uri _uri(String path, [Map<String, dynamic>? query]) {
-    final base = kApiBaseUrl.endsWith('/')
-        ? kApiBaseUrl.substring(0, kApiBaseUrl.length - 1)
-        : kApiBaseUrl;
+  Uri _uri(String path, BackendTarget target, [Map<String, dynamic>? query]) {
+    final String baseUrl = target == BackendTarget.fitos ? kFitosBaseUrl : kApiBaseUrl;
+    final base = baseUrl.endsWith('/')
+        ? baseUrl.substring(0, baseUrl.length - 1)
+        : baseUrl;
     final clean = path.startsWith('/') ? path : '/$path';
     final qp = <String, dynamic>{};
     query?.forEach((k, v) {
@@ -93,14 +104,14 @@ class ApiClient {
   }
 
   /// GET → returns the unwrapped `data`. [meta] (pagination) is ignored here.
-  Future<dynamic> getData(String path, {Map<String, dynamic>? query}) async {
-    final uri = _uri(path, query);
+  Future<dynamic> getData(String path, {Map<String, dynamic>? query, BackendTarget target = BackendTarget.core}) async {
+    final uri = _uri(path, target, query);
     return _send(() => _http.get(uri, headers: _headers()));
   }
 
   /// POST a JSON body → returns the unwrapped `data`.
-  Future<dynamic> postData(String path, Map<String, dynamic> body) async {
-    final uri = _uri(path);
+  Future<dynamic> postData(String path, Map<String, dynamic> body, {BackendTarget target = BackendTarget.core}) async {
+    final uri = _uri(path, target);
     return _send(() => _http.post(
           uri,
           headers: _headers(),

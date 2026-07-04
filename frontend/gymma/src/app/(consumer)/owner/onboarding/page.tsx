@@ -82,7 +82,7 @@ export default function OnboardingPage() {
         throw new Error(onboardData.error?.message || "Failed to submit onboarding data");
       }
 
-      router.push("/owner/dashboard?onboarded=true");
+      window.location.href = "/owner/dashboard?onboarded=true";
     } catch (err: any) {
       setError(err.message || "An error occurred");
       setIsSubmitting(false);

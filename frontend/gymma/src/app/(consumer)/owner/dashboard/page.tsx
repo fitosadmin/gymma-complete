@@ -17,12 +17,17 @@ export default function OwnerDashboardPage() {
   const [user, setUser] = React.useState<any>(null);
 
   React.useEffect(() => {
-    import("@/lib/auth").then(({ isAuthenticated, getAccessToken, getUser }) => {
+    import("@/lib/auth").then(({ isAuthenticated, getAccessToken, getUser, clearSession }) => {
       if (!isAuthenticated()) {
         router.replace("/owner/login");
       } else {
-        const t = getAccessToken() || "";
         const u = getUser();
+        if (u && !['owner', 'admin', 'super_admin'].includes(u.role)) {
+          clearSession();
+          router.replace("/owner/login");
+          return;
+        }
+        const t = getAccessToken() || "";
         setToken(t);
         setUser(u);
         setIsAuth(true);
@@ -103,11 +108,11 @@ export default function OwnerDashboardPage() {
             <h2 className="text-xl font-semibold text-neutral-900">Member Management</h2>
           </div>
           
-          <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+          <div>
             {gymId ? (
               <MembersTab gymId={gymId} token={token} />
             ) : (
-              <div className="p-8 text-center text-neutral-500">Loading gym data...</div>
+              <div className="rounded-xl border border-neutral-200 bg-white shadow-sm overflow-hidden p-8 text-center text-neutral-500">Loading gym data...</div>
             )}
           </div>
         </div>

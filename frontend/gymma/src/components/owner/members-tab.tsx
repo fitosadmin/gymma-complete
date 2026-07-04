@@ -14,6 +14,7 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchMembers = async () => {
     if (gymId === "no-gym") {
@@ -37,6 +38,7 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
+    setError(null);
     try {
       await addMember(gymId, token, { fullName, phone });
       setShowAdd(false);
@@ -44,7 +46,7 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
       setPhone("");
       await fetchMembers();
     } catch (e) {
-      alert("Failed to add member");
+      setError((e as Error).message || "Failed to add member");
     } finally {
       setSubmitting(false);
     }
@@ -71,7 +73,7 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
   }
 
   return (
-    <div className="flex flex-col gap-6 mt-6">
+    <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-neutral-900">Gym Members</h2>
@@ -89,6 +91,11 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
             <h3 className="text-lg font-semibold text-neutral-900">Add New Member</h3>
             <p className="text-sm text-neutral-500">Enter member details to enroll them.</p>
           </div>
+          {error && (
+            <div className="mb-5 p-4 rounded-lg bg-red-50 border border-red-100 text-sm text-red-600 flex items-start gap-2">
+              <span className="font-semibold text-red-700">Error:</span> {error}
+            </div>
+          )}
           <form onSubmit={handleAdd} className="flex flex-col gap-5">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
