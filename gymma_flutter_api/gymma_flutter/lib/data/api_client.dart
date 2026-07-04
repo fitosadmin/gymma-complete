@@ -14,13 +14,9 @@ const String _fallbackBaseUrl = 'https://gymma-api.onrender.com/api/v1';
 const String kApiBaseUrl =
     String.fromEnvironment('API_BASE_URL', defaultValue: _fallbackBaseUrl);
 
-/// Android emulator maps 10.0.2.2 → host machine localhost.
-/// iOS simulator uses localhost directly.
-/// For Android:  flutter run --dart-define=FITOS_BASE_URL=http://10.0.2.2:3002/api/v1
-/// For iOS:      flutter run --dart-define=FITOS_BASE_URL=http://localhost:3002/api/v1
-/// JWT compatibility: run gymma-api locally (port 8085) with the same ACCESS_TOKEN_SECRET
-/// as fitos backend, then also set --dart-define=API_BASE_URL=http://10.0.2.2:8085/api/v1
-const String _fallbackFitosBaseUrl = 'http://10.0.2.2:3002/api/v1';
+/// Deployed fitos backend on Render.
+/// To test locally: flutter run --dart-define=FITOS_BASE_URL=http://<YOUR_LAN_IP>:3002/api/v1
+const String _fallbackFitosBaseUrl = 'https://fitos-api.onrender.com/api/v1';
 
 const String kFitosBaseUrl =
     String.fromEnvironment('FITOS_BASE_URL', defaultValue: _fallbackFitosBaseUrl);
