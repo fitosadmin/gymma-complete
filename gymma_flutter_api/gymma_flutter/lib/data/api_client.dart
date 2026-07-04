@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
+import 'auth_service.dart';
 /// =============================================================================
 /// SET THIS to your deployed backend, INCLUDING the /api/v1 suffix.
 /// e.g. https://gymma-api.onrender.com/api/v1
@@ -14,7 +14,13 @@ const String _fallbackBaseUrl = 'https://gymma-api.onrender.com/api/v1';
 const String kApiBaseUrl =
     String.fromEnvironment('API_BASE_URL', defaultValue: _fallbackBaseUrl);
 
-const String _fallbackFitosBaseUrl = 'https://fitos-api.onrender.com/api/v1';
+/// Android emulator maps 10.0.2.2 → host machine localhost.
+/// iOS simulator uses localhost directly.
+/// For Android:  flutter run --dart-define=FITOS_BASE_URL=http://10.0.2.2:3002/api/v1
+/// For iOS:      flutter run --dart-define=FITOS_BASE_URL=http://localhost:3002/api/v1
+/// JWT compatibility: run gymma-api locally (port 8085) with the same ACCESS_TOKEN_SECRET
+/// as fitos backend, then also set --dart-define=API_BASE_URL=http://10.0.2.2:8085/api/v1
+const String _fallbackFitosBaseUrl = 'http://10.0.2.2:3002/api/v1';
 
 const String kFitosBaseUrl =
     String.fromEnvironment('FITOS_BASE_URL', defaultValue: _fallbackFitosBaseUrl);
@@ -106,7 +112,7 @@ class ApiClient {
   /// GET → returns the unwrapped `data`. [meta] (pagination) is ignored here.
   Future<dynamic> getData(String path, {Map<String, dynamic>? query, BackendTarget target = BackendTarget.core}) async {
     final uri = _uri(path, target, query);
-    return _send(() => _http.get(uri, headers: _headers()));
+    return _send(() => _http.get(uri, headers: _headers()), target: target);
   }
 
   /// POST a JSON body → returns the unwrapped `data`.
@@ -116,10 +122,10 @@ class ApiClient {
           uri,
           headers: _headers(),
           body: jsonEncode(body),
-        ));
+        ), target: target);
   }
 
-  Future<dynamic> _send(Future<http.Response> Function() request) async {
+  Future<dynamic> _send(Future<http.Response> Function() request, {BackendTarget target = BackendTarget.core}) async {
     http.Response res;
     try {
       res = await request().timeout(_timeout);
@@ -136,24 +142,35 @@ class ApiClient {
           'Could not reach the server. Check your connection and try again.');
     }
 
-    Map<String, dynamic> json;
+    dynamic parsedJson;
     try {
-      json = jsonDecode(res.body) as Map<String, dynamic>;
+      parsedJson = jsonDecode(res.body);
     } catch (_) {
       throw ApiException('Unexpected server response.',
           statusCode: res.statusCode);
     }
 
-    if (res.statusCode >= 200 &&
-        res.statusCode < 300 &&
-        json['success'] == true) {
-      return json['data'];
+    if (res.statusCode >= 200 && res.statusCode < 300) {
+      if (target == BackendTarget.fitos) {
+        return parsedJson;
+      } else if (parsedJson is Map && parsedJson['success'] == true) {
+        return parsedJson['data'];
+      }
+    }
+    
+    String msg = 'Request failed (${res.statusCode}).';
+    if (parsedJson is Map) {
+      final err = parsedJson['error'];
+      if (err is Map && err['message'] is String) {
+        msg = err['message'] as String;
+      } else if (parsedJson['message'] is String) {
+        msg = parsedJson['message'] as String;
+      }
+    }
+    if (res.statusCode == 401) {
+      AuthService.instance.logout();
     }
 
-    final err = json['error'];
-    final msg = (err is Map && err['message'] is String)
-        ? err['message'] as String
-        : 'Request failed (${res.statusCode}).';
     throw ApiException(msg, statusCode: res.statusCode);
   }
 }

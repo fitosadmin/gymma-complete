@@ -12,7 +12,7 @@ import { RedisService } from '../redis/redis.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
-const DEFAULT_GYM_ID = 'default-gym-000000000000';
+const DEFAULT_GYM_ID = '00000000-0000-0000-0000-000000000000';
 
 @Injectable()
 export class AuthService {

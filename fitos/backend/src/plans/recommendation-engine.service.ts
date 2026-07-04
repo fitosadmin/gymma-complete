@@ -89,7 +89,7 @@ export class RecommendationEngineService {
     const over65 = responses.S1_AGE > 65;
 
     // STEP 2 — Load Gym Exercise Database
-    const gymId = assessment.user.gymId ?? 'default-gym-000000000000';
+    const gymId = assessment.user.gymId ?? '00000000-0000-0000-0000-000000000000';
     const gymDbRecords = await this.prisma.gymExerciseDatabase.findMany({
       where: { gymId, isAvailable: true },
       include: {

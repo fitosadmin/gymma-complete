@@ -920,10 +920,10 @@ async function main() {
   console.log('Seeding default gym and exercise availability...');
 
   const defaultGym = await prisma.gym.upsert({
-    where: { id: 'default-gym-000000000000' },
+    where: { id: '00000000-0000-0000-0000-000000000000' },
     update: {},
     create: { 
-      id: 'default-gym-000000000000', 
+      id: '00000000-0000-0000-0000-000000000000', 
       name: 'FITOS Default Gym',
       slug: 'fitos-default-gym',
       area: 'Bengaluru',

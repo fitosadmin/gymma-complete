@@ -62,4 +62,61 @@ class FitosRepository extends ChangeNotifier {
       rethrow;
     }
   }
+  /// Fetches all workout plans for the current user.
+  Future<List<dynamic>> listUserPlans() async {
+    try {
+      final data = await ApiClient.instance.getData(
+        '/plans',
+        target: BackendTarget.fitos,
+      );
+      return data as List<dynamic>;
+    } catch (e) {
+      debugPrint('Fitos listUserPlans error: $e');
+      rethrow;
+    }
+  }
+
+  /// Logs a completed workout session.
+  Future<Map<String, dynamic>> logSession(Map<String, dynamic> sessionData) async {
+    try {
+      final data = await ApiClient.instance.postData(
+        '/tracking/sessions',
+        sessionData,
+        target: BackendTarget.fitos,
+      );
+      return data as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('Fitos logSession error: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches the user's logged workout sessions, optionally filtered by planId.
+  Future<List<dynamic>> listSessions({String? planId}) async {
+    try {
+      final data = await ApiClient.instance.getData(
+        '/tracking/sessions',
+        query: planId != null ? {'planId': planId} : null,
+        target: BackendTarget.fitos,
+      );
+      return data as List<dynamic>;
+    } catch (e) {
+      debugPrint('Fitos listSessions error: $e');
+      rethrow;
+    }
+  }
+
+  /// Fetches AI suggestions for progressing in a specific plan.
+  Future<Map<String, dynamic>> getSuggestions(String planId) async {
+    try {
+      final data = await ApiClient.instance.getData(
+        '/tracking/plans/$planId/suggestions',
+        target: BackendTarget.fitos,
+      );
+      return data as Map<String, dynamic>;
+    } catch (e) {
+      debugPrint('Fitos getSuggestions error: $e');
+      rethrow;
+    }
+  }
 }

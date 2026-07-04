@@ -35,6 +35,8 @@ class AppColors {
 
   // Semantic
   static const success = secondary500;
+  static const warning = Color(0xFFF59E0B);
+  static const error = Color(0xFFEF4444);
   static const rating = Color(0xFFFBBF24);
   static const green = Color(0xFF16A34A); // whatsapp accent
 }
