@@ -5,7 +5,6 @@ import { asyncHandler } from '../../shared/utils/asyncHandler';
 import * as service from './auth.service';
 import type {
   RegisterBody,
-  RegisterMemberBody,
   LoginBody,
   GoogleBody,
   GoogleAdminBody,
@@ -16,11 +15,6 @@ import type {
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const result = await service.register(req.body as RegisterBody);
-  res.status(201).json(success(result));
-});
-
-export const registerMember = asyncHandler(async (req: Request, res: Response) => {
-  const result = await service.registerMember(req.body as RegisterMemberBody);
   res.status(201).json(success(result));
 });
 

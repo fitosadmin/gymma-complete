@@ -74,24 +74,6 @@ export async function register(input: {
   return issueTokens(user);
 }
 
-export async function registerMember(input: {
-  phone: string;
-  password: string;
-  fullName?: string;
-}): Promise<AuthResult> {
-  const existing = await repo.findByIdentifier(input.phone);
-  if (existing) throw AppError.conflict('An account with this phone number already exists');
-
-  const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
-  const user = await repo.createMemberUser({
-    phone: input.phone,
-    passwordHash,
-    fullName: input.fullName,
-  });
-
-  return issueTokens(user);
-}
-
 export async function login(input: {
   identifier: string;
   password: string;
