@@ -1,9 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Plus, Users, Search, Loader2 } from "lucide-react";
+import { Plus, Users, Trash2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { listMembers, addMember } from "@/lib/api";
+import { listMembers, addMember, removeMember } from "@/lib/api";
 
 export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
   const [members, setMembers] = useState<any[]>([]);
@@ -15,6 +15,7 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
   const [phone, setPhone] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   const fetchMembers = async () => {
     if (gymId === "no-gym") {
@@ -34,6 +35,19 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
   useEffect(() => {
     fetchMembers();
   }, [gymId, token]);
+
+  const handleRemove = async (memberId: string) => {
+    if (!confirm("Remove this member from your gym?")) return;
+    setRemovingId(memberId);
+    try {
+      await removeMember(gymId, token, memberId);
+      await fetchMembers();
+    } catch (e) {
+      alert((e as Error).message || "Failed to remove member");
+    } finally {
+      setRemovingId(null);
+    }
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,6 +171,7 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
                 <th className="px-6 py-4 font-semibold">Phone</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
                 <th className="px-6 py-4 font-semibold">Joined</th>
+                <th className="px-6 py-4 font-semibold"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-neutral-100">
@@ -171,6 +186,20 @@ export function MembersTab({ gymId, token }: { gymId: string, token: string }) {
                   </td>
                   <td className="px-6 py-4">
                     {new Date(m.start_date).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      onClick={() => handleRemove(m.membership_id)}
+                      disabled={removingId === m.membership_id}
+                      className="inline-flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 transition-colors"
+                    >
+                      {removingId === m.membership_id ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3" />
+                      )}
+                      Remove
+                    </button>
                   </td>
                 </tr>
               ))}

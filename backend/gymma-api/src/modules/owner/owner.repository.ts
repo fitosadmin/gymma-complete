@@ -247,6 +247,16 @@ export async function addMemberToGym(
   });
 }
 
+export async function removeMemberFromGym(gymId: string, memberId: string): Promise<boolean> {
+  const rows = await query<{ id: string }>(
+    `UPDATE gym_members SET deleted_at = NOW(), status = 'cancelled'
+      WHERE id = $1 AND gym_id = $2 AND deleted_at IS NULL
+      RETURNING id`,
+    [memberId, gymId],
+  );
+  return rows.length > 0;
+}
+
 export async function listMembers(gymId: string) {
   const rows = await query<any>(
     `SELECT m.id as membership_id, m.status, m.start_date, m.end_date,

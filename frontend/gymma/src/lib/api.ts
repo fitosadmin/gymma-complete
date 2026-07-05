@@ -182,7 +182,7 @@ export async function listMembers(gymId: string, token: string) {
 export async function addMember(gymId: string, token: string, data: { fullName: string; phone: string; email?: string; planId?: string }) {
   const res = await fetch(`${API_URL}/owner/gyms/${gymId}/members`, {
     method: "POST",
-    headers: { 
+    headers: {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${token}`
     },
@@ -190,5 +190,15 @@ export async function addMember(gymId: string, token: string, data: { fullName: 
   });
   const json = await res.json();
   if (!json.success) throw new Error(json.error?.message || "Failed to add member");
+  return json.data;
+}
+
+export async function removeMember(gymId: string, token: string, memberId: string) {
+  const res = await fetch(`${API_URL}/owner/gyms/${gymId}/members/${memberId}`, {
+    method: "DELETE",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+  const json = await res.json();
+  if (!json.success) throw new Error(json.error?.message || "Failed to remove member");
   return json.data;
 }

@@ -101,6 +101,11 @@ export async function listMembers(gymId: string) {
   return repo.listMembers(gymId);
 }
 
+export async function removeMember(gymId: string, memberId: string): Promise<void> {
+  const ok = await repo.removeMemberFromGym(gymId, memberId);
+  if (!ok) throw AppError.notFound('Member not found or already removed');
+}
+
 export async function addMember(gymId: string, data: { phone: string; fullName: string; email?: string; planId?: string }) {
   const defaultPassword = 'Gymma@1234';
   const passwordHash = await bcrypt.hash(defaultPassword, 12);

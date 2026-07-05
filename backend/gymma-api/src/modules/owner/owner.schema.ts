@@ -70,5 +70,11 @@ export const addMemberBody = z.object({
   planId: z.string().uuid().optional(),
 });
 
+export const memberIdParam = z.object({
+  gymId: z.string().uuid(),
+  memberId: z.string().uuid(),
+});
+
 export type OnboardGymBody = z.infer<typeof onboardGymBody>;
 export type AddMemberBody = z.infer<typeof addMemberBody>;
+export type MemberIdParam = z.infer<typeof memberIdParam>;

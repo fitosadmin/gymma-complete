@@ -52,3 +52,8 @@ export const addMember = asyncHandler(async (req: Request, res: Response) => {
   const result = await service.addMember(req.params.gymId, req.body as AddMemberBody);
   res.status(201).json(success(result));
 });
+
+export const removeMember = asyncHandler(async (req: Request, res: Response) => {
+  await service.removeMember(req.params.gymId, req.params.memberId);
+  res.json(success({ removed: true }));
+});
