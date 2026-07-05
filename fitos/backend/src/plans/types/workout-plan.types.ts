@@ -26,6 +26,7 @@ export interface Session {
 export interface ProgramParameters {
   frequency: number;
   split: string;
+  totalWeeks: number;
   weeklyVolumePerMuscle: number;
   intensityModel: IntensityRange;
   periodizationModel: 'double_progression' | 'linear' | 'dup' | 'block';
