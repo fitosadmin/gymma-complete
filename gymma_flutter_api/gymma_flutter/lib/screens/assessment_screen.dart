@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../data/fitos_repository.dart';
 import '../theme.dart';
@@ -73,6 +74,10 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
       // Remove null optional fields so Zod doesn't reject them
       final payload = Map<String, dynamic>.from(_answers)
         ..removeWhere((k, v) => v == null);
+
+      debugPrint('=== ASSESSMENT PAYLOAD ===');
+      debugPrint(const JsonEncoder.withIndent('  ').convert(payload));
+      debugPrint('==========================');
 
       final assessment = await FitosRepository.instance.submitAssessment(payload);
       final assessmentId = assessment['assessmentId'] as String?;

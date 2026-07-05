@@ -162,6 +162,11 @@ class ApiClient {
       } else if (parsedJson['message'] is String) {
         msg = parsedJson['message'] as String;
       }
+      // Log field-level validation errors to aid debugging
+      if (parsedJson['errors'] != null) {
+        // ignore: avoid_print
+        print('API validation errors: ${parsedJson['errors']}');
+      }
     }
     if (res.statusCode == 401) {
       AuthService.instance.logout();

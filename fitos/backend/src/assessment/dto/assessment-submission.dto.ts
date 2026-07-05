@@ -92,15 +92,8 @@ export const AssessmentSubmissionSchema = z.object({
     }
   }
 
-  // S6_INJURY_LIST and S6_PAIN_SCALE required when S6_CURRENT_INJURY = true
+  // S6_PAIN_SCALE required when S6_CURRENT_INJURY = true
   if (data.S6_CURRENT_INJURY) {
-    if (!data.S6_INJURY_LIST || data.S6_INJURY_LIST.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['S6_INJURY_LIST'],
-        message: 'Injury list required when current injury is true',
-      });
-    }
     if (data.S6_PAIN_SCALE === undefined) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

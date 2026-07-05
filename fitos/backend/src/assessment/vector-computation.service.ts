@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { AssessmentResponses, SafetyFlag, UserFitnessProfileVector } from './types/assessment.types';
 
 // ─── Lookup maps ─────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ export class VectorComputationService {
   // ─── Public entry point ──────────────────────────────────────────────────
 
   computeUserVector(r: AssessmentResponses): UserFitnessProfileVector {
-    return {
+    const vector: UserFitnessProfileVector = {
       Goal_Alignment:      clamp(this.computeG(r)),
       Recovery_Capacity:   clamp(this.computeR(r)),
       Mobility_Score:      clamp(this.computeM(r)),
@@ -79,8 +79,20 @@ export class VectorComputationService {
       Experience_Score:    clamp(this.computeE(r)),
       Availability_Score:  clamp(this.computeA(r)),
       Injury_Risk:         clamp(this.computeI(r)),
-      Preference_Alignment: 50, // post-hoc; default 50 at submission
+      Preference_Alignment: 50,
     };
+    this.validateVector(vector);
+    return vector;
+  }
+
+  private validateVector(vector: UserFitnessProfileVector): void {
+    for (const [key, value] of Object.entries(vector)) {
+      if (typeof value !== 'number' || isNaN(value) || value < 0 || value > 100) {
+        throw new InternalServerErrorException(
+          `Vector dimension ${key} has invalid value: ${value}. Check assessment responses for malformed field values.`,
+        );
+      }
+    }
   }
 
   computeSafetyFlags(r: AssessmentResponses): SafetyFlag[] {
@@ -132,12 +144,28 @@ export class VectorComputationService {
   // ─── 2.2 Recovery Capacity (R) ───────────────────────────────────────────
   // R_max = 240 + 60 + 60 + 100 + 31.5 = 491.5
   computeR(r: AssessmentResponses): number {
-    const sleep       = r.S2_SLEEP * r.S2_SLEEP_QUALITY * 4;
-    const occupation  = OCCUPATION_MAP[r.S2_OCCUPATION] * 15;
-    const stress      = (4 - STRESS_MAP[r.S2_STRESS]) * 20;
-    const nutrition   = NUTRITION_MAP[r.S2_NUTRITION] * 25;
-    const alcohol     = Math.max(0, 21 - (r.S2_ALCOHOL ?? 0)) * 1.5;
-    const raw         = sleep + occupation + stress + nutrition + alcohol;
+    const sleep = r.S2_SLEEP * r.S2_SLEEP_QUALITY * 4;
+
+    const occupationVal = OCCUPATION_MAP[r.S2_OCCUPATION];
+    if (occupationVal === undefined) {
+      throw new BadRequestException(`Invalid S2_OCCUPATION value: "${r.S2_OCCUPATION}". Expected: ${Object.keys(OCCUPATION_MAP).join(', ')}`);
+    }
+    const occupation = occupationVal * 15;
+
+    const stressVal = STRESS_MAP[r.S2_STRESS];
+    if (stressVal === undefined) {
+      throw new BadRequestException(`Invalid S2_STRESS value: "${r.S2_STRESS}". Expected: ${Object.keys(STRESS_MAP).join(', ')}`);
+    }
+    const stress = (4 - stressVal) * 20;
+
+    const nutritionVal = NUTRITION_MAP[r.S2_NUTRITION];
+    if (nutritionVal === undefined) {
+      throw new BadRequestException(`Invalid S2_NUTRITION value: "${r.S2_NUTRITION}". Expected: ${Object.keys(NUTRITION_MAP).join(', ')}`);
+    }
+    const nutrition = nutritionVal * 25;
+
+    const alcohol = Math.max(0, 21 - (r.S2_ALCOHOL ?? 0)) * 1.5;
+    const raw = sleep + occupation + stress + nutrition + alcohol;
     return clamp((raw / 491.5) * 100);
   }
 
