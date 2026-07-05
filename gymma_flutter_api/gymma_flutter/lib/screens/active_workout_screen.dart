@@ -23,13 +23,30 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
   List<Map<String, dynamic>> _exercises = [];
   int _effectiveDayNumber = 1;
   final DateTime _startTime = DateTime.now();
-  // exerciseIndex → completed
-  final Map<int, bool> _completed = {};
+
+  // Per-set tracking: exerciseIndex → list of {reps, load, completed}
+  // TextEditingControllers track actual user input for reps and weight per set.
+  final Map<int, List<TextEditingController>> _repsControllers = {};
+  final Map<int, List<TextEditingController>> _loadControllers = {};
+  final Map<int, List<bool>> _setCompleted = {};
+  // Track which exercise cards are expanded (default: all expanded)
+  final Map<int, bool> _expanded = {};
 
   @override
   void initState() {
     super.initState();
     _loadPlan();
+  }
+
+  @override
+  void dispose() {
+    for (final controllers in _repsControllers.values) {
+      for (final c in controllers) { c.dispose(); }
+    }
+    for (final controllers in _loadControllers.values) {
+      for (final c in controllers) { c.dispose(); }
+    }
+    super.dispose();
   }
 
   Future<void> _loadPlan() async {
@@ -42,7 +59,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
         return;
       }
 
-      // Cycle dayNumber into the actual sessions count
       final count = rawSessions.length;
       final cycledIdx = (widget.dayNumber - 1) % count;
       _effectiveDayNumber = (rawSessions[cycledIdx] as Map)['dayNumber'] as int? ?? cycledIdx + 1;
@@ -52,6 +68,24 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
+
+      // Initialize per-set data for each exercise
+      for (var i = 0; i < exercises.length; i++) {
+        final ex = exercises[i];
+        final targetSets = (ex['sets'] as num?)?.toInt() ?? 3;
+        final minReps = _parseMinReps(ex['reps'] as String? ?? '10');
+
+        _repsControllers[i] = List.generate(
+          targetSets,
+          (_) => TextEditingController(text: minReps.toString()),
+        );
+        _loadControllers[i] = List.generate(
+          targetSets,
+          (_) => TextEditingController(text: '0'),
+        );
+        _setCompleted[i] = List.generate(targetSets, (_) => false);
+        _expanded[i] = true; // start expanded so sets are visible immediately
+      }
 
       if (mounted) {
         setState(() {
@@ -71,13 +105,22 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
     return int.tryParse(parts.first.trim()) ?? 10;
   }
 
-  Future<void> _finishWorkout() async {
-    final completedCount = _completed.values.where((v) => v).length;
-    final String status = completedCount == 0
-        ? 'missed'
-        : (completedCount == _exercises.length ? 'completed' : 'partial');
+  int get _totalSets =>
+      _setCompleted.values.fold(0, (sum, sets) => sum + sets.length);
 
-    // Ask for RPE before logging
+  int get _completedSets =>
+      _setCompleted.values.fold(0, (sum, sets) => sum + sets.where((v) => v).length);
+
+  Future<void> _finishWorkout() async {
+    final completedSetsCount = _completedSets;
+    final totalSetsCount = _totalSets;
+
+    final String status = completedSetsCount == 0
+        ? 'missed'
+        : completedSetsCount == totalSetsCount
+            ? 'completed'
+            : 'partial';
+
     final rpe = await _showRpeDialog();
     if (!mounted || rpe == null) return;
 
@@ -89,12 +132,14 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       for (var i = 0; i < _exercises.length; i++) {
         final ex = _exercises[i];
         final exerciseId = ex['exerciseId'] as String? ?? '';
-        // Skip conditioning and other non-trackable pseudo-exercises
         if (ex['category'] == 'conditioning' ||
-            exerciseId == '00000000-0000-0000-0000-000000000000') continue;
-        final done = _completed[i] ?? false;
+            exerciseId == '00000000-0000-0000-0000-000000000000') { continue; }
+
         final targetSets = (ex['sets'] as num?)?.toInt() ?? 3;
-        final minReps = _parseMinReps(ex['reps'] as String? ?? '10');
+        final repsCtrl = _repsControllers[i] ?? [];
+        final loadCtrl = _loadControllers[i] ?? [];
+        final completed = _setCompleted[i] ?? [];
+
         exerciseLogs.add({
           'exerciseId': exerciseId,
           'targetSets': targetSets,
@@ -102,8 +147,11 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             targetSets,
             (j) => {
               'setNumber': j + 1,
-              'reps': minReps,
-              'completed': done,
+              'reps': j < repsCtrl.length ? (int.tryParse(repsCtrl[j].text) ?? 0) : 0,
+              'load': j < loadCtrl.length
+                  ? (double.tryParse(loadCtrl[j].text) ?? 0.0)
+                  : 0.0,
+              'completed': j < completed.length ? completed[j] : false,
             },
           ),
         });
@@ -147,7 +195,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                'Effort: ${rpe.round()} / 10',
+                'Session Effort: ${rpe.round()} / 10',
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -212,8 +260,9 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       );
     }
 
-    final completedCount = _completed.values.where((v) => v).length;
-    final progress = completedCount / _exercises.length;
+    final total = _totalSets;
+    final done = _completedSets;
+    final progress = total > 0 ? done / total : 0.0;
     final focus = _todaySession?['focus'] as String? ?? 'Training';
     final durationTarget = _todaySession?['durationMinutes'] as int?;
 
@@ -245,7 +294,6 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       ),
       body: Column(
         children: [
-          // Progress bar + count label
           LinearProgressIndicator(
             value: progress,
             backgroundColor: AppColors.neutral200,
@@ -258,7 +306,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$completedCount / ${_exercises.length} exercises done',
+                  '$done / $total sets done',
                   style: const TextStyle(
                       color: AppColors.neutral500, fontSize: 13),
                 ),
@@ -271,93 +319,260 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
               ],
             ),
           ),
+          // Input hint
+          const Padding(
+            padding: EdgeInsets.fromLTRB(16, 6, 16, 2),
+            child: Text(
+              'Tap an exercise to expand. Enter actual reps & weight per set, then check it done.',
+              style: TextStyle(fontSize: 11, color: AppColors.neutral400),
+            ),
+          ),
           Expanded(
-            child: ListView.builder(
+            child: ListView(
               padding: const EdgeInsets.all(16),
-              itemCount: _exercises.length,
-              itemBuilder: (context, i) {
-                final ex = _exercises[i];
-                final done = _completed[i] ?? false;
-                final name = ex['name'] as String? ?? 'Exercise';
-                final sets = (ex['sets'] as num?)?.toInt() ?? 3;
-                final reps = ex['reps'] as String? ?? '10';
-                final restSec = (ex['restSeconds'] as num?)?.toInt();
-                final category = ex['category'] as String? ?? '';
-                final rpe = ex['rpe'] as num?;
+              children: List.generate(
+                _exercises.length,
+                (i) => _buildExerciseCard(i),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
-                return GestureDetector(
-                  onTap: () => setState(() => _completed[i] = !done),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
+  Widget _buildExerciseCard(int i) {
+    final ex = _exercises[i];
+    final name = ex['name'] as String? ?? 'Exercise';
+    final targetSets = (ex['sets'] as num?)?.toInt() ?? 3;
+    final reps = ex['reps'] as String? ?? '10';
+    final restSec = (ex['restSeconds'] as num?)?.toInt();
+    final category = ex['category'] as String? ?? '';
+    final targetRpe = ex['rpe'] as num?;
+    final isExpanded = _expanded[i] ?? true;
+
+    final completed = _setCompleted[i] ?? [];
+    final allDone = completed.isNotEmpty && completed.every((v) => v);
+    final anyDone = completed.any((v) => v);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: allDone
+              ? AppColors.success
+              : anyDone
+                  ? AppColors.warning
+                  : AppColors.neutral200,
+          width: allDone || anyDone ? 2 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Exercise header — tap to expand/collapse
+          InkWell(
+            onTap: () => setState(() => _expanded[i] = !isExpanded),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(9),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                      border: Border.all(
-                        color: done ? AppColors.success : AppColors.neutral200,
-                        width: done ? 2 : 1,
-                      ),
+                      color: allDone
+                          ? AppColors.success.withOpacity(0.12)
+                          : AppColors.primary500.withOpacity(0.10),
+                      shape: BoxShape.circle,
                     ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      leading: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: done
-                              ? AppColors.success.withOpacity(0.12)
-                              : AppColors.primary500.withOpacity(0.10),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          done ? Icons.check : Icons.fitness_center,
-                          color: done
-                              ? AppColors.success
-                              : AppColors.primary500,
-                          size: 20,
-                        ),
-                      ),
-                      title: Text(
-                        name,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          decoration:
-                              done ? TextDecoration.lineThrough : null,
-                          color: done
-                              ? AppColors.neutral400
-                              : AppColors.ink,
-                        ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$sets sets × $reps reps'
-                            '${restSec != null ? ' · ${restSec}s rest' : ''}'
-                            '${rpe != null ? ' · RPE ${rpe.round()}' : ''}',
-                            style: const TextStyle(fontSize: 13),
-                          ),
-                          if (category.isNotEmpty)
-                            Text(
-                              category.toUpperCase(),
-                              style: const TextStyle(
-                                fontSize: 11,
-                                color: AppColors.neutral400,
-                                letterSpacing: 0.8,
-                              ),
-                            ),
-                        ],
-                      ),
-                      trailing: Checkbox(
-                        value: done,
-                        activeColor: AppColors.success,
-                        onChanged: (val) =>
-                            setState(() => _completed[i] = val ?? false),
-                      ),
+                    child: Icon(
+                      allDone ? Icons.check : Icons.fitness_center,
+                      color: allDone ? AppColors.success : AppColors.primary500,
+                      size: 18,
                     ),
                   ),
-                );
-              },
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name,
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            color: allDone ? AppColors.neutral400 : AppColors.ink,
+                            decoration: allDone ? TextDecoration.lineThrough : null,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '$targetSets sets × $reps reps'
+                          '${restSec != null ? ' · ${restSec}s rest' : ''}'
+                          '${targetRpe != null ? ' · RPE ${targetRpe.round()}' : ''}',
+                          style: const TextStyle(fontSize: 12, color: AppColors.neutral500),
+                        ),
+                        if (category.isNotEmpty)
+                          Text(
+                            category.toUpperCase(),
+                            style: const TextStyle(
+                              fontSize: 10,
+                              color: AppColors.neutral400,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    isExpanded ? Icons.expand_less : Icons.expand_more,
+                    color: AppColors.neutral400,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Expanded: per-set logging rows
+          if (isExpanded) ...[
+            const Divider(height: 1, thickness: 1, color: AppColors.neutral100),
+            // Column headers
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+              child: Row(
+                children: const [
+                  SizedBox(
+                    width: 32,
+                    child: Text('Set',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.neutral500)),
+                  ),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text('Reps',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.neutral500)),
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text('Weight (kg)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.neutral500)),
+                  ),
+                  SizedBox(width: 8),
+                  SizedBox(
+                    width: 40,
+                    child: Text('Done',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.neutral500)),
+                  ),
+                ],
+              ),
+            ),
+            for (var j = 0; j < targetSets; j++) _buildSetRow(i, j),
+            const SizedBox(height: 8),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSetRow(int exerciseIdx, int setIdx) {
+    final repsCtrl = _repsControllers[exerciseIdx]?[setIdx];
+    final loadCtrl = _loadControllers[exerciseIdx]?[setIdx];
+    final done = _setCompleted[exerciseIdx]?[setIdx] ?? false;
+    if (repsCtrl == null || loadCtrl == null) return const SizedBox();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 3, 14, 3),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 32,
+            child: Text(
+              '${setIdx + 1}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: done ? AppColors.success : AppColors.neutral600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: SizedBox(
+              height: 38,
+              child: TextField(
+                controller: repsCtrl,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  isDense: true,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: const BorderSide(color: AppColors.neutral200),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+                  fillColor:
+                      done ? AppColors.success.withOpacity(0.06) : Colors.white,
+                  filled: true,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SizedBox(
+              height: 38,
+              child: TextField(
+                controller: loadCtrl,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14),
+                decoration: InputDecoration(
+                  isDense: true,
+                  suffixText: 'kg',
+                  suffixStyle: const TextStyle(fontSize: 11, color: AppColors.neutral400),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(6),
+                    borderSide: const BorderSide(color: AppColors.neutral200),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 9),
+                  fillColor:
+                      done ? AppColors.success.withOpacity(0.06) : Colors.white,
+                  filled: true,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 40,
+            child: Checkbox(
+              value: done,
+              activeColor: AppColors.success,
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              onChanged: (v) => setState(() {
+                _setCompleted[exerciseIdx]![setIdx] = v ?? false;
+              }),
             ),
           ),
         ],

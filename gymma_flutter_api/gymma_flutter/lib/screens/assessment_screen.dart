@@ -16,6 +16,11 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
   int _currentPage = 0;
   static const int _totalPages = 6;
 
+  // Controllers for 1RM numeric inputs (only shown when E >= 20 and toggle is on)
+  late final TextEditingController _squatRmCtrl;
+  late final TextEditingController _deadliftRmCtrl;
+  late final TextEditingController _benchRmCtrl;
+
   final Map<String, dynamic> _answers = {
     // S0: Safety — all false means medically cleared (PAR-Q inverted logic)
     'S0_Q1': false, 'S0_Q2': false, 'S0_Q3': false, 'S0_Q4': false,
@@ -50,6 +55,84 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     'S8_DISLIKES': <String>[],
   };
 
+  @override
+  void initState() {
+    super.initState();
+    _squatRmCtrl = TextEditingController();
+    _deadliftRmCtrl = TextEditingController();
+    _benchRmCtrl = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _squatRmCtrl.dispose();
+    _deadliftRmCtrl.dispose();
+    _benchRmCtrl.dispose();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // Mirrors backend VectorComputationService.computeE() for live UI gating.
+  // Used to decide whether to show 1RM switch (E>=20) and split question (E>=35).
+  int _computeCurrentEScore() {
+    const durationPoints = {
+      'Never': 0.0, '<6mo': 15.0, '6-12mo': 35.0,
+      '1-2yr': 55.0, '2-5yr': 80.0, '5+yr': 100.0,
+    };
+    final duration = _answers['S3_DURATION'] as String? ?? 'Never';
+    final compounds = (_answers['S3_COMPOUNDS'] as List?)?.length ?? 0;
+    final programPoints = (_answers['S3_PROGRAM'] as bool?) == true ? 15.0 : 0.0;
+    final freq = (_answers['S3_FREQUENCY'] as num?)?.toInt() ?? 0;
+    double freqPoints;
+    if (freq == 0) {
+      freqPoints = 0;
+    } else if (freq <= 2) {
+      freqPoints = 5;
+    } else if (freq <= 4) {
+      freqPoints = 10;
+    } else if (freq <= 6) {
+      freqPoints = 15;
+    } else {
+      freqPoints = 20;
+    }
+
+    return ((durationPoints[duration]! * 0.50 +
+             compounds * 10.0 * 0.30 +
+             programPoints * 0.15 +
+             freqPoints * 0.05)
+        .clamp(0.0, 100.0))
+        .round();
+  }
+
+  // Non-dismissible dialog — barrierDismissible:false and only "Go Back" action.
+  // Always returns false so the submission flow stops.
+  Future<bool> _showMedicalBlockedDialog() {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        icon: const Icon(Icons.medical_services, color: AppColors.error, size: 48),
+        title: const Text('Medical Clearance Required'),
+        content: const Text(
+          'You have indicated you are not medically cleared to exercise.\n\n'
+          'For your safety, Fitos AI cannot generate a load-bearing plan '
+          'without medical clearance. Please consult a licensed healthcare '
+          'provider before starting a training program.',
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Go Back'),
+          ),
+        ],
+      ),
+    ).then((v) => v == true);
+  }
+
   void _nextPage() {
     if (_currentPage < _totalPages - 1) {
       _pageController.nextPage(
@@ -69,6 +152,12 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
   }
 
   Future<void> _submitAssessment() async {
+    // Pre-check: block plan if medically NOT cleared (S0_Q2 or S0_Q3 true)
+    if ((_answers['S0_Q2'] as bool? ?? false) || (_answers['S0_Q3'] as bool? ?? false)) {
+      final proceed = await _showMedicalBlockedDialog();
+      if (!proceed || !mounted) return;
+    }
+
     setState(() => _isSubmitting = true);
     try {
       // Remove null optional fields so Zod doesn't reject them
@@ -262,6 +351,9 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
 
   // ─── Page 3: Training History ─────────────────────────────────────────────
   Widget _buildPage3TrainingHistory() {
+    final e = _computeCurrentEScore();
+    final is1RMAware = _answers['S3_1RM_AWARE'] as bool;
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -277,12 +369,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
           'S3_COMPOUNDS',
           ['Squat', 'Deadlift', 'Bench Press', 'Overhead Press', 'Pull-up'],
         ),
-        _buildIntSlider(
-          'Current Training Frequency',
-          'S3_FREQUENCY',
-          0, 7,
-          unit: 'days/wk',
-        ),
+        _buildIntSlider('Current Training Frequency', 'S3_FREQUENCY', 0, 7, unit: 'days/wk'),
         const Divider(height: 32),
         SwitchListTile(
           title: const Text('Following a structured program?'),
@@ -291,13 +378,41 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
           activeColor: AppColors.primary500,
           onChanged: (v) => setState(() => _answers['S3_PROGRAM'] = v),
         ),
-        SwitchListTile(
-          title: const Text('Do you know your 1-Rep Max (1RM)?'),
-          subtitle: const Text('The maximum weight you can lift for one rep'),
-          value: _answers['S3_1RM_AWARE'] as bool,
-          activeColor: AppColors.primary500,
-          onChanged: (v) => setState(() => _answers['S3_1RM_AWARE'] = v),
-        ),
+        // 1RM section only shown once user has enough training experience (E >= 20)
+        if (e >= 20) ...[
+          SwitchListTile(
+            title: const Text('Do you know your 1-Rep Max (1RM)?'),
+            subtitle: const Text('The maximum weight you can lift for one rep'),
+            value: is1RMAware,
+            activeColor: AppColors.primary500,
+            onChanged: (v) => setState(() {
+              _answers['S3_1RM_AWARE'] = v;
+              if (!v) {
+                _answers.remove('S3_SQUAT_1RM');
+                _answers.remove('S3_DEADLIFT_1RM');
+                _answers.remove('S3_BENCH_1RM');
+                _squatRmCtrl.clear();
+                _deadliftRmCtrl.clear();
+                _benchRmCtrl.clear();
+              }
+            }),
+          ),
+          if (is1RMAware) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Text(
+                'Enter your 1-rep max in kg. Skip any lift you have not tested — Fitos will estimate from your training profile.',
+                style: TextStyle(color: AppColors.neutral500, fontSize: 13),
+              ),
+            ),
+            _build1RMInput('Squat 1RM', _squatRmCtrl,
+                (v) => setState(() => _answers['S3_SQUAT_1RM'] = v)),
+            _build1RMInput('Deadlift 1RM', _deadliftRmCtrl,
+                (v) => setState(() => _answers['S3_DEADLIFT_1RM'] = v)),
+            _build1RMInput('Bench Press 1RM', _benchRmCtrl,
+                (v) => setState(() => _answers['S3_BENCH_1RM'] = v)),
+          ],
+        ],
       ],
     );
   }
@@ -322,6 +437,10 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
   // ─── Page 5: Health & Recovery ────────────────────────────────────────────
   Widget _buildPage5HealthRecovery() {
     final hasInjury = _answers['S6_CURRENT_INJURY'] as bool;
+    final hasSurgery = _answers['S6_PAST_SURGERY'] as bool;
+    final hasPhysio = _answers['S6_PHYSIO'] as bool;
+    final isMedicallyBlocked = _answers['S0_Q2'] as bool;
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -358,6 +477,8 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
         ),
         const Divider(height: 32),
         _label('Medical & Injury'),
+
+        // Current injury toggle
         SwitchListTile(
           title: const Text('Currently injured?'),
           value: hasInjury,
@@ -384,22 +505,37 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
           ),
           _buildIntSlider('Pain Level (0 = none, 10 = severe)', 'S6_PAIN_SCALE', 0, 10, unit: '/10'),
         ],
+
+        // Past surgery toggle + caution
         SwitchListTile(
           title: const Text('Had surgery in the past year?'),
-          value: _answers['S6_PAST_SURGERY'] as bool,
+          value: hasSurgery,
           activeColor: AppColors.primary500,
           onChanged: (v) => setState(() => _answers['S6_PAST_SURGERY'] = v),
         ),
+        if (hasSurgery)
+          _buildCautionBanner(
+            'Your plan will incorporate post-surgical precautions (elevated Injury Risk score). '
+            'Follow your surgeon\'s return-to-exercise guidance alongside this program.',
+          ),
+
+        // Physiotherapist toggle + caution
         SwitchListTile(
           title: const Text('Currently seeing a physiotherapist?'),
-          value: _answers['S6_PHYSIO'] as bool,
+          value: hasPhysio,
           activeColor: AppColors.primary500,
           onChanged: (v) => setState(() => _answers['S6_PHYSIO'] = v),
         ),
+        if (hasPhysio)
+          _buildCautionBanner(
+            'Fitos will apply conservative loading. Share this plan with your physiotherapist before starting.',
+          ),
+
+        // Medical clearance toggle + error if blocked
         SwitchListTile(
           title: const Text('Medically cleared to exercise'),
           subtitle: const Text('I have no known conditions requiring medical supervision'),
-          value: !(_answers['S0_Q2'] as bool),
+          value: !isMedicallyBlocked,
           activeColor: AppColors.primary500,
           onChanged: (v) {
             setState(() {
@@ -413,12 +549,27 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
             });
           },
         ),
+        if (isMedicallyBlocked)
+          _buildErrorBanner(
+            'Medical clearance required. Plan generation will be blocked until you consult a healthcare provider and toggle this ON.',
+          ),
       ],
     );
   }
 
   // ─── Page 6: Mobility & Preferences ──────────────────────────────────────
   Widget _buildPage6MobilityPrefs() {
+    final e = _computeCurrentEScore();
+
+    // Split options are experience-gated per Doc 1 §8 and Doc 3 split matrix.
+    // E < 35: beginners get Full Body only via engine — skip the question entirely.
+    // 35 <= E < 55: intermediate — Full Body or Upper/Lower.
+    // E >= 55: advanced — all 4 splits available.
+    final showSplit = e >= 35;
+    final splitOptions = e >= 55
+        ? ['Full Body', 'Upper/Lower', 'Push/Pull/Legs', 'Bro Split']
+        : ['Full Body', 'Upper/Lower'];
+
     return ListView(
       padding: const EdgeInsets.all(24),
       children: [
@@ -444,10 +595,14 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
         _inlineChips('S8_STYLE',
             ['Free Weights', 'Machines', 'Calisthenics', 'Mixed']),
         const SizedBox(height: 8),
-        _label('Preferred Split Style'),
-        _inlineChips('S8_SPLIT',
-            ['Full Body', 'Upper/Lower', 'Push/Pull/Legs', 'Bro Split']),
-        const SizedBox(height: 8),
+
+        // Preferred split — only shown for experienced users (E >= 35)
+        if (showSplit) ...[
+          _label('Preferred Split Style'),
+          _inlineChips('S8_SPLIT', splitOptions),
+          const SizedBox(height: 8),
+        ],
+
         _label('Cardio Preference'),
         _inlineChips('S8_CARDIO', ['None', 'Low', 'Moderate', 'High']),
         const SizedBox(height: 8),
@@ -563,7 +718,6 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
   }
 
   Widget _radioTile(String label, String value, String key) {
-    // For secondary goal, handle the empty-string "None" option
     final isSecondary = key == 'S4_SECONDARY_DISPLAY';
     String? currentSecondary = _answers['S4_SECONDARY'] as String?;
     final isSelected = isSecondary
@@ -577,7 +731,6 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
             _answers['S4_SECONDARY'] = value.isEmpty ? null : value;
           } else {
             _answers[key] = value;
-            // If primary goal changed, clear secondary if they now match
             if (key == 'S4_PRIMARY' && _answers['S4_SECONDARY'] == value) {
               _answers['S4_SECONDARY'] = null;
             }
@@ -645,7 +798,6 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     );
   }
 
-  // Horizontal wrap of chips for a single-select enum field (S7, S8)
   Widget _inlineChips(String key, List<String> options) {
     final selected = _answers[key] as String?;
     return Padding(
@@ -657,7 +809,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
           final active = selected == opt;
           return GestureDetector(
             onTap: () => setState(() {
-              _answers[key] = active ? null : opt; // toggle off = null (omitted)
+              _answers[key] = active ? null : opt;
             }),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -682,8 +834,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     );
   }
 
-  Widget _buildMultiSelect(
-      String label, String key, List<String> options) {
+  Widget _buildMultiSelect(String label, String key, List<String> options) {
     final selected = (_answers[key] as List?)?.cast<String>() ?? <String>[];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -719,6 +870,84 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
         ),
         const SizedBox(height: 16),
       ],
+    );
+  }
+
+  // 1RM number input with kg suffix — only shown on training history page
+  Widget _build1RMInput(
+    String label,
+    TextEditingController ctrl,
+    Function(double?) onChanged,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
+          const SizedBox(height: 6),
+          TextField(
+            controller: ctrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: InputDecoration(
+              hintText: 'e.g. 100',
+              suffixText: 'kg',
+              isDense: true,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            onChanged: (v) => onChanged(double.tryParse(v)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCautionBanner(String message) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.warning.withOpacity(0.1),
+        border: Border.all(color: AppColors.warning.withOpacity(0.5)),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(message,
+                style: const TextStyle(fontSize: 13, color: AppColors.neutral700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildErrorBanner(String message) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(0, 4, 0, 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.error.withOpacity(0.08),
+        border: Border.all(color: AppColors.error.withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.error_outline, color: AppColors.error, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(message,
+                style: const TextStyle(fontSize: 13, color: AppColors.neutral700)),
+          ),
+        ],
+      ),
     );
   }
 }
