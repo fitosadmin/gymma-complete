@@ -6,6 +6,7 @@ import { requireAuth } from '../../middleware/auth';
 import * as controller from './auth.controller';
 import {
   registerBody,
+  registerMemberBody,
   loginBody,
   googleBody,
   googleAdminBody,
@@ -17,6 +18,7 @@ import {
 export const authRouter = Router();
 
 authRouter.post('/register', authLimiter, validate({ body: registerBody }), controller.register);
+authRouter.post('/register-member', authLimiter, validate({ body: registerMemberBody }), controller.registerMember);
 authRouter.post('/login', authLimiter, validate({ body: loginBody }), controller.login);
 authRouter.post('/google', authLimiter, validate({ body: googleBody }), controller.google);
 authRouter.post('/google-admin', authLimiter, validate({ body: googleAdminBody }), controller.googleAdmin);

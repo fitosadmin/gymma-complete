@@ -17,7 +17,8 @@ const BCRYPT_COST = 12;
 
 export interface PublicUser {
   id: string;
-  email: string;
+  email: string | null;
+  phone: string | null;
   fullName: string | null;
   role: UserRow['role'];
   avatarUrl: string | null;
@@ -34,6 +35,7 @@ function toPublic(u: UserRow): PublicUser {
   return {
     id: u.id,
     email: u.email,
+    phone: u.phone,
     fullName: u.full_name,
     role: u.role,
     avatarUrl: u.avatar_url,
@@ -67,7 +69,25 @@ export async function register(input: {
 
   // fire-and-forget verification email
   const link = `${env.FRONTEND_ORIGIN}/verify-email?uid=${user.id}`;
-  void sendEmail({ to: user.email, ...verificationEmail(link) });
+  void sendEmail({ to: user.email!, ...verificationEmail(link) });
+
+  return issueTokens(user);
+}
+
+export async function registerMember(input: {
+  phone: string;
+  password: string;
+  fullName?: string;
+}): Promise<AuthResult> {
+  const existing = await repo.findByIdentifier(input.phone);
+  if (existing) throw AppError.conflict('An account with this phone number already exists');
+
+  const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
+  const user = await repo.createMemberUser({
+    phone: input.phone,
+    passwordHash,
+    fullName: input.fullName,
+  });
 
   return issueTokens(user);
 }
@@ -202,7 +222,7 @@ export async function forgotPassword(email: string): Promise<void> {
   await repo.insertResetToken(user.id, hashToken(token), expiresAt);
 
   const link = `${env.FRONTEND_ORIGIN}/reset-password?token=${token}`;
-  void sendEmail({ to: user.email, ...resetEmail(link) });
+  void sendEmail({ to: user.email!, ...resetEmail(link) });
 }
 
 export async function resetPassword(token: string, newPassword: string): Promise<void> {

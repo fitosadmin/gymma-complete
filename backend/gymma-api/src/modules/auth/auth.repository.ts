@@ -3,7 +3,7 @@ import { query, queryOne } from '../../shared/db/query';
 
 export interface UserRow {
   id: string;
-  email: string;
+  email: string | null;
   phone: string | null;
   email_verified: boolean;
   password_hash: string | null;
@@ -59,6 +59,20 @@ export async function createUser(args: {
       args.avatarUrl ?? null,
       args.emailVerified ?? false,
     ],
+  );
+  return row!;
+}
+
+export async function createMemberUser(args: {
+  phone: string;
+  passwordHash: string;
+  fullName?: string;
+}): Promise<UserRow> {
+  const row = await queryOne<UserRow>(
+    `INSERT INTO users (phone, password_hash, full_name, role, email_verified)
+     VALUES ($1,$2,$3,'member',false)
+     RETURNING *`,
+    [args.phone, args.passwordHash, args.fullName ?? null],
   );
   return row!;
 }

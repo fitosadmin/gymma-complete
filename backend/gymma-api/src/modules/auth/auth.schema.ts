@@ -13,6 +13,12 @@ export const registerBody = z.object({
   fullName: z.string().trim().min(2).max(120),
 });
 
+export const registerMemberBody = z.object({
+  phone: z.string().trim().min(7).max(15),
+  password,
+  fullName: z.string().trim().min(2).max(120).optional(),
+});
+
 export const loginBody = z.object({
   identifier: z.string().trim().min(1),
   password: z.string().min(1),
@@ -36,6 +42,7 @@ export const resetPasswordBody = z.object({
 });
 
 export type RegisterBody = z.infer<typeof registerBody>;
+export type RegisterMemberBody = z.infer<typeof registerMemberBody>;
 export type LoginBody = z.infer<typeof loginBody>;
 export type GoogleBody = z.infer<typeof googleBody>;
 export type RefreshBody = z.infer<typeof refreshBody>;
