@@ -42,6 +42,9 @@ export class TrackingService {
       });
 
       for (const ex of dto.exercises) {
+        // Skip the conditioning pseudo-exercise (no real DB row to link to)
+        if (ex.exerciseId === '00000000-0000-0000-0000-000000000000') continue;
+
         const completedSets = ex.sets.filter((s) => s.completed).length;
         const loads = ex.sets.filter((s) => s.load !== undefined && s.completed).map((s) => s.load!);
         const maxLoad = loads.length > 0 ? Math.max(...loads) : null;

@@ -204,6 +204,7 @@ export class RecommendationEngineService {
       programParameters: {
         frequency: F,
         split,
+        totalWeeks: periodizationModel === 'linear' ? 4 : 8,
         weeklyVolumePerMuscle: adjustedV,
         intensityModel: intensityRange,
         periodizationModel,
@@ -452,8 +453,10 @@ export class RecommendationEngineService {
     const spec = cardioSpecs[cardioPreference];
     if (!spec) return null;
 
+    // Use a fixed nil-UUID so the session DTO (uuid validation) accepts it.
+    // The tracking service skips performance log creation for this pseudo-ID.
     return {
-      exerciseId: 'conditioning',
+      exerciseId: '00000000-0000-0000-0000-000000000000',
       code: 'CONDITIONING',
       name: `Conditioning: ${cardioPreference} intensity`,
       category: 'conditioning',

@@ -88,11 +88,15 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
       final exerciseLogs = <Map<String, dynamic>>[];
       for (var i = 0; i < _exercises.length; i++) {
         final ex = _exercises[i];
+        final exerciseId = ex['exerciseId'] as String? ?? '';
+        // Skip conditioning and other non-trackable pseudo-exercises
+        if (ex['category'] == 'conditioning' ||
+            exerciseId == '00000000-0000-0000-0000-000000000000') continue;
         final done = _completed[i] ?? false;
         final targetSets = (ex['sets'] as num?)?.toInt() ?? 3;
         final minReps = _parseMinReps(ex['reps'] as String? ?? '10');
         exerciseLogs.add({
-          'exerciseId': ex['exerciseId'] as String,
+          'exerciseId': exerciseId,
           'targetSets': targetSets,
           'sets': List.generate(
             targetSets,

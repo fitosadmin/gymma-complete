@@ -31,12 +31,13 @@ export class PlansService {
 
   async listUserPlans(userId: string) {
     return this.prisma.workoutPlan.findMany({
-      where: { userId },
+      where: { userId, isActive: true },
       orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         assessmentId: true,
         createdAt: true,
+        isActive: true,
         metadata: true,
         programParameters: true,
         safetyFlags: true,
