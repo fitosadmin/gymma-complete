@@ -104,48 +104,44 @@ class _GymmaNavBar extends StatelessWidget {
                 child: GestureDetector(
                   onTap: () => onTap(i),
                   behavior: HitTestBehavior.opaque,
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          curve: Curves.easeOut,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? AppColors.brandCopper.withOpacity(0.12)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(AppRadius.full),
-                          ),
-                          child: Icon(
-                            selected ? item.activeIcon : item.icon,
-                            color: selected
-                                ? AppColors.brandCopper
-                                : AppColors.textSecondary,
-                            size: 22,
-                          ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.max,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? AppColors.brandCopper.withOpacity(0.12)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
                         ),
-                        const SizedBox(height: 4),
-                        AnimatedDefaultTextStyle(
-                          duration: const Duration(milliseconds: 200),
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: selected
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                            color: selected
-                                ? AppColors.brandCopper
-                                : AppColors.textSecondary,
-                          ),
-                          child: Text(item.label),
+                        child: Icon(
+                          selected ? item.activeIcon : item.icon,
+                          color: selected
+                              ? AppColors.brandCopper
+                              : AppColors.textSecondary,
+                          size: 22,
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 2),
+                      AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 200),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: selected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                          color: selected
+                              ? AppColors.brandCopper
+                              : AppColors.textSecondary,
+                        ),
+                        child: Text(item.label),
+                      ),
+                    ],
                   ),
                 ),
               );
