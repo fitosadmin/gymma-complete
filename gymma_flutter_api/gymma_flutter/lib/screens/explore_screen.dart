@@ -112,8 +112,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
-      decoration: const BoxDecoration(
-        color: Color(0xFF141414), // Dark background
+      decoration: BoxDecoration(
+        color: AppColors.brandNavyDark,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -123,7 +123,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
               height: 40,
               width: 40,
               decoration: BoxDecoration(
-                  color: AppColors.primary500,
+                  gradient: AppGradients.brandGradient,
                   borderRadius: BorderRadius.circular(12)),
               child: const Icon(Icons.fitness_center,
                   color: Colors.white, size: 24),
@@ -142,7 +142,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   color: Colors.white.withOpacity(0.08),
                   borderRadius: BorderRadius.circular(20)),
               child: Row(children: [
-                const Icon(Icons.location_on, color: AppColors.primary500, size: 16),
+                const Icon(Icons.location_on, color: AppColors.brandCopper, size: 16),
                 const SizedBox(width: 6),
                 Text(currentArea, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(width: 4),
@@ -159,7 +159,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 letterSpacing: -1.2),
             children: [
               TextSpan(text: 'Find your\n', style: TextStyle(color: Colors.white)),
-              TextSpan(text: 'perfect gym.', style: TextStyle(color: AppColors.primary500)),
+              TextSpan(text: 'perfect gym.', style: TextStyle(color: AppColors.brandCopper)),
             ],
           )),
           const SizedBox(height: 12),
@@ -253,7 +253,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 final s = GymRepository.platformStats[i];
                 return Column(
                   children: [
-                    Icon(statsIcons[i], color: AppColors.primary500, size: 20),
+                    Icon(statsIcons[i], color: AppColors.brandCopper, size: 20),
                     const SizedBox(height: 6),
                     Text(s.$1,
                         style: const TextStyle(
@@ -290,10 +290,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
                       children: [
                         Text(eyebrow.toUpperCase(),
                             style: const TextStyle(
-                                color: AppColors.primary600,
+                                color: AppColors.brandCopper,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                letterSpacing: 1)),
+                                letterSpacing: 1.5)),
                         const SizedBox(height: 2),
                         Text(title,
                             style: const TextStyle(
@@ -409,8 +409,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
         margin: const EdgeInsets.fromLTRB(20, 16, 20, 0),
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-              colors: [AppColors.primary500, AppColors.primary700]),
+          gradient: AppGradients.brandGradient,
           borderRadius: BorderRadius.circular(AppRadius.xl),
         ),
         child: Column(

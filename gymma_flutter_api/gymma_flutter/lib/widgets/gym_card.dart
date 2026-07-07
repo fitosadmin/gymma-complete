@@ -26,7 +26,6 @@ class GymCard extends StatelessWidget {
     final opensAtFormatted = formatTimeShort(gym.opensAt);
     
     return Material(
-      color: AppColors.neutral0,
       borderRadius: BorderRadius.circular(AppRadius.lg),
       child: InkWell(
         onTap: () => _open(context),
@@ -34,7 +33,14 @@ class GymCard extends StatelessWidget {
         child: Ink(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: AppColors.neutral200),
+            border: Border.all(color: AppColors.divider),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.brandNavy.withOpacity(0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              )
+            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,7 +135,7 @@ class GymCard extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: AppColors.neutral50,
+                              color: AppColors.paperBackground,
                                   borderRadius:
                                       BorderRadius.circular(AppRadius.full),
                                   border:
@@ -169,7 +175,7 @@ class GymCard extends StatelessWidget {
                             const Padding(
                               padding: EdgeInsets.only(right: 8),
                               child: Icon(Icons.woman,
-                                  size: 18, color: AppColors.primary500),
+                                  size: 18, color: AppColors.brandCopper),
                             ),
                           const Spacer(),
                           Text(formatINR(gym.pricePerMonth),
