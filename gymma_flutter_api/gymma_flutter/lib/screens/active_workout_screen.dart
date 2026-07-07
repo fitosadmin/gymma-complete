@@ -109,7 +109,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen>
         _loadControllers[i] =
             List.generate(targetSets, (_) => TextEditingController(text: '0'));
         _setCompleted[i] = List.generate(targetSets, (_) => false);
-        _expanded[i] = true;
+        _expanded[i] = false;
       }
 
       if (mounted) {
@@ -553,7 +553,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen>
     final restSec = (ex['restSeconds'] as num?)?.toInt();
     final category = ex['category'] as String? ?? '';
     final targetRpe = ex['rpe'] as num?;
-    final isExpanded = _expanded[i] ?? true;
+    final isExpanded = _expanded[i] ?? false;
 
     final completed = _setCompleted[i] ?? [];
     final doneCount = completed.where((v) => v).length;
