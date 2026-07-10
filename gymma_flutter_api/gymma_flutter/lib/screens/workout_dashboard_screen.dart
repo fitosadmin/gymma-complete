@@ -4,6 +4,7 @@ import '../data/fitos_repository.dart';
 import '../theme.dart';
 import '../widgets/shimmer.dart';
 import '../widgets/gradient_button.dart';
+import '../widgets/branded_expansion_tile.dart';
 import 'assessment_screen.dart';
 import 'active_workout_screen.dart';
 import 'workout_plan_view_screen.dart';
@@ -294,6 +295,7 @@ class _WorkoutDashboardScreenState extends State<WorkoutDashboardScreen>
                           label: 'Streak',
                           icon: Icons.local_fire_department_rounded,
                           color: AppColors.warning,
+                          onInfoTap: () => _showStreakInfo(context),
                         )),
                       ],
                     ),
@@ -311,14 +313,14 @@ class _WorkoutDashboardScreenState extends State<WorkoutDashboardScreen>
                 const SizedBox(height: 14),
 
                 if (_recentSessions.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
                     child: Center(
                       child: Column(children: [
                         Icon(Icons.inbox_rounded,
                             color: AppColors.divider, size: 40),
-                        const SizedBox(height: 10),
-                        const Text(
+                        SizedBox(height: 10),
+                        Text(
                             'No sessions logged yet.\nStart your first workout!',
                             textAlign: TextAlign.center,
                             style: TextStyle(
@@ -370,6 +372,21 @@ class _WorkoutDashboardScreenState extends State<WorkoutDashboardScreen>
           ),
         const SizedBox(width: 4),
       ],
+    );
+  }
+
+  void _showStreakInfo(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('How streak works'),
+        content: const Text(
+            'Counts consecutive workout days, most recent first. A gap of more '
+            'than 2 days — or a session marked "missed" — resets it back to zero.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Got it')),
+        ],
+      ),
     );
   }
 
@@ -434,9 +451,7 @@ class _WorkoutDashboardScreenState extends State<WorkoutDashboardScreen>
           )
         ],
       ),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
+      child: BrandedExpansionTile(
           tilePadding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
           leading: Container(
             width: 40,
@@ -462,7 +477,7 @@ class _WorkoutDashboardScreenState extends State<WorkoutDashboardScreen>
             style: const TextStyle(
                 color: AppColors.textSecondary, fontSize: 12),
           ),
-          trailing: Column(
+          trailingExtra: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
@@ -557,7 +572,6 @@ class _WorkoutDashboardScreenState extends State<WorkoutDashboardScreen>
             ),
           ],
         ),
-      ),
     );
   }
 
@@ -736,11 +750,13 @@ class _StatCard extends StatelessWidget {
   final String label;
   final IconData icon;
   final Color color;
+  final VoidCallback? onInfoTap;
   const _StatCard(
       {required this.value,
       required this.label,
       required this.icon,
-      required this.color});
+      required this.color,
+      this.onInfoTap});
 
   @override
   Widget build(BuildContext context) {
@@ -759,13 +775,24 @@ class _StatCard extends StatelessWidget {
         ],
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Container(
-          padding: const EdgeInsets.all(7),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(AppRadius.md),
-          ),
-          child: Icon(icon, color: color, size: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(AppRadius.md),
+              ),
+              child: Icon(icon, color: color, size: 16),
+            ),
+            if (onInfoTap != null)
+              GestureDetector(
+                onTap: onInfoTap,
+                child: Icon(Icons.info_outline_rounded,
+                    size: 15, color: AppColors.textSecondary.withOpacity(0.6)),
+              ),
+          ],
         ),
         const SizedBox(height: 10),
         Text(value,

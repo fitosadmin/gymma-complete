@@ -5,6 +5,7 @@ import '../models/gym.dart';
 import '../theme.dart';
 import '../utils/format.dart';
 import '../widgets/common.dart';
+import '../widgets/shimmer.dart';
 
 class CompareScreen extends StatefulWidget {
   const CompareScreen({super.key});
@@ -87,27 +88,60 @@ class _CompareScreenState extends State<CompareScreen> {
       appBar: AppBar(
         title: const Text('Compare gyms',
             style: TextStyle(fontWeight: FontWeight.w700)),
+        actions: [
+          if (_selected.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.neutral100,
+                    borderRadius: BorderRadius.circular(AppRadius.full),
+                  ),
+                  child: Text('${_selected.length}/3 added',
+                      style: const TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.neutral700)),
+                ),
+              ),
+            ),
+        ],
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? _shimmerLoading()
           : _error != null
               ? _errorView()
               : _selected.isEmpty
                   ? _empty()
-                  : SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: _table(),
+                  : Scrollbar(
+                      thumbVisibility: true,
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: _table(),
+                      ),
                     ),
-      floatingActionButton: _selected.length < 3
-          ? FloatingActionButton.extended(
-              backgroundColor: AppColors.ink,
-              onPressed: _pick,
-              icon: const Icon(Icons.add),
-              label: const Text('Add gym'),
-            )
-          : null,
+      floatingActionButton: _selected.isEmpty
+          ? null
+          : FloatingActionButton.extended(
+              backgroundColor: _selected.length < 3 ? AppColors.ink : AppColors.neutral400,
+              onPressed: _selected.length < 3
+                  ? _pick
+                  : () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                      content: Text('You can compare up to 3 gyms — remove one to add another.'))),
+              icon: Icon(_selected.length < 3 ? Icons.add : Icons.check),
+              label: Text(_selected.length < 3 ? 'Add gym' : 'Compare full (3/3)'),
+            ),
     );
   }
+
+  Widget _shimmerLoading() => const Padding(
+        padding: EdgeInsets.all(16),
+        child: Row(children: [
+          Expanded(child: ShimmerCard(height: 280)),
+          SizedBox(width: 12),
+          Expanded(child: ShimmerCard(height: 280)),
+        ]),
+      );
 
   Widget _errorView() => Center(
         child: Padding(
@@ -296,7 +330,7 @@ class _CompareScreenState extends State<CompareScreen> {
                 _scoreLabel(score),
                 [
                   for (final d in _selected)
-                    cell(Text(_scoreVal(d, score).toStringAsFixed(1))),
+                    cell(_scoreBar(_scoreVal(d, score))),
                 ],
                 shade: ['equipment', 'value'].contains(score)),
           row(
@@ -325,6 +359,23 @@ class _CompareScreenState extends State<CompareScreen> {
       ),
     );
   }
+
+  Widget _scoreBar(double value) => Row(children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            child: LinearProgressIndicator(
+              value: (value / 5).clamp(0.0, 1.0),
+              minHeight: 6,
+              backgroundColor: AppColors.neutral100,
+              color: AppColors.primary500,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(value.toStringAsFixed(1),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+      ]);
 
   String _scoreLabel(String k) => '${k[0].toUpperCase()}${k.substring(1)}';
   double _scoreVal(GymDetail d, String k) {

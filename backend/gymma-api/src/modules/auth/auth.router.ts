@@ -37,3 +37,4 @@ authRouter.post(
 );
 
 authRouter.get('/me', requireAuth, controller.me);
+authRouter.get('/me/gyms', requireAuth, controller.myGyms);

@@ -70,3 +70,8 @@ export const me = asyncHandler(async (req: Request, res: Response) => {
   const user = await service.me(req.user!.id);
   res.json(success(user));
 });
+
+export const myGyms = asyncHandler(async (req: Request, res: Response) => {
+  const gyms = await service.myGyms(req.user!.id);
+  res.json(success(gyms));
+});

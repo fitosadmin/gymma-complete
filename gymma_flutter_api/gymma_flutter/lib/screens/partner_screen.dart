@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../data/api_client.dart';
 import '../data/gym_repository.dart';
 import '../theme.dart';
+import '../widgets/gradient_button.dart';
 import 'owner_dashboard_screen.dart';
 
 class PartnerScreen extends StatefulWidget {
@@ -101,25 +102,10 @@ class _PartnerScreenState extends State<PartnerScreen> {
                 const SizedBox(height: 8),
               ],
               const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary500,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(AppRadius.md))),
-                  onPressed: _submitting ? null : _submit,
-                  child: _submitting
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(
-                              strokeWidth: 2, color: Colors.white))
-                      : const Text('Request a demo',
-                          style: TextStyle(
-                              fontWeight: FontWeight.w700, fontSize: 15)),
-                ),
+              GradientButton(
+                label: 'Request a demo',
+                isLoading: _submitting,
+                onPressed: _submitting ? null : _submit,
               ),
             ]),
           ),
@@ -166,7 +152,13 @@ class _PartnerScreenState extends State<PartnerScreen> {
                   'Your request has been received. Our team will reach out shortly to get your gym listed.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.neutral500, height: 1.5)),
-              const SizedBox(height: 24),
+              const SizedBox(height: 28),
+              GradientButton(
+                label: 'Done',
+                height: 48,
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              const SizedBox(height: 10),
               OutlinedButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                     builder: (_) => const OwnerDashboardScreen())),

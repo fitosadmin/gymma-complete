@@ -21,6 +21,21 @@ const String _fallbackFitosBaseUrl = 'https://fitos-api.onrender.com/api/v1';
 const String kFitosBaseUrl =
     String.fromEnvironment('FITOS_BASE_URL', defaultValue: _fallbackFitosBaseUrl);
 
+/// Gymma review/rating backend. Not deployed yet — the fallback below is a
+/// placeholder for when it is; until then, point at your local instance:
+///   flutter run --dart-define=REVIEWS_BASE_URL=http://<YOUR_LAN_IP>:3001/api/v1
+const String _fallbackReviewsBaseUrl = 'https://gymma-reviews-api.onrender.com/api/v1';
+
+const String kReviewsBaseUrl = String.fromEnvironment('REVIEWS_BASE_URL',
+    defaultValue: _fallbackReviewsBaseUrl);
+
+/// Gymma broadcast messaging backend (gym-wide announcements).
+/// To test locally: flutter run --dart-define=BROADCAST_BASE_URL=http://<YOUR_LAN_IP>:3002/api/v1
+const String _fallbackBroadcastBaseUrl = 'https://broadcast-api.onrender.com/api/v1';
+
+const String kBroadcastBaseUrl = String.fromEnvironment('BROADCAST_BASE_URL',
+    defaultValue: _fallbackBroadcastBaseUrl);
+
 /// =============================================================================
 /// Gym photos are stored in the DB as RELATIVE paths (e.g.
 /// /images/gyms/fitness-solutions_0.jpg) and the actual .jpg files are served
@@ -39,6 +54,8 @@ const String kImageBaseUrl = String.fromEnvironment('IMAGE_BASE_URL',
 enum BackendTarget {
   core,
   fitos,
+  reviews,
+  broadcast,
 }
 
 /// Turns a possibly-relative image path into an absolute URL the app can load.
@@ -79,7 +96,12 @@ class ApiClient {
   static String? authToken;
 
   Uri _uri(String path, BackendTarget target, [Map<String, dynamic>? query]) {
-    final String baseUrl = target == BackendTarget.fitos ? kFitosBaseUrl : kApiBaseUrl;
+    final String baseUrl = switch (target) {
+      BackendTarget.fitos => kFitosBaseUrl,
+      BackendTarget.reviews => kReviewsBaseUrl,
+      BackendTarget.broadcast => kBroadcastBaseUrl,
+      BackendTarget.core => kApiBaseUrl,
+    };
     final base = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
@@ -121,6 +143,25 @@ class ApiClient {
         ), target: target);
   }
 
+  /// DELETE → returns the unwrapped `data`.
+  Future<dynamic> deleteData(String path, {BackendTarget target = BackendTarget.core}) async {
+    final uri = _uri(path, target);
+    return _send(() => _http.delete(
+          uri,
+          headers: _headers(),
+        ), target: target);
+  }
+
+  /// PATCH a JSON body → returns the unwrapped `data`.
+  Future<dynamic> patchData(String path, Map<String, dynamic> body, {BackendTarget target = BackendTarget.core}) async {
+    final uri = _uri(path, target);
+    return _send(() => _http.patch(
+          uri,
+          headers: _headers(),
+          body: jsonEncode(body),
+        ), target: target);
+  }
+
   Future<dynamic> _send(Future<http.Response> Function() request, {BackendTarget target = BackendTarget.core}) async {
     http.Response res;
     try {
@@ -136,6 +177,11 @@ class ApiClient {
     } catch (_) {
       throw const ApiException(
           'Could not reach the server. Check your connection and try again.');
+    }
+
+    // 204 No Content (e.g. broadcast-api's mark-read/delete) has no body to parse.
+    if (res.statusCode == 204) {
+      return null;
     }
 
     dynamic parsedJson;

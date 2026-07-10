@@ -58,11 +58,19 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  static final _phoneRe = RegExp(r'^[6-9]\d{9}$');
+  static final _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
   Future<void> _handleLogin() async {
-    final phone = _phoneController.text.trim();
+    final identifier = _phoneController.text.trim();
     final password = _passwordController.text;
-    if (phone.isEmpty || password.isEmpty) {
-      setState(() => _error = 'Please enter your phone number and password');
+    if (identifier.isEmpty || password.isEmpty) {
+      setState(() => _error = 'Please enter your phone or email and password');
+      return;
+    }
+    if (!_phoneRe.hasMatch(identifier) && !_emailRe.hasMatch(identifier)) {
+      setState(() =>
+          _error = 'Enter a valid 10-digit phone number or email address');
       return;
     }
     setState(() {
@@ -70,13 +78,144 @@ class _LoginScreenState extends State<LoginScreen>
       _error = null;
     });
     try {
-      await AuthService.instance.login(phone, password);
+      await AuthService.instance.login(identifier, password);
+      if (mounted) Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       setState(
           () => _error = e.toString().replaceAll('ApiException(null): ', ''));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _openForgotPassword() async {
+    final emailCtrl = TextEditingController();
+    bool submitting = false;
+    bool sent = false;
+    String? sheetError;
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xxl))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 28,
+            left: 24,
+            right: 24,
+            top: 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: sent
+                ? [
+                    Center(
+                      child: Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                            color: AppColors.success.withOpacity(0.12),
+                            shape: BoxShape.circle),
+                        child: const Icon(Icons.mark_email_read_outlined,
+                            color: AppColors.success, size: 30),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Check your email',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 6),
+                    const Text(
+                        'If an account exists for that address, we\'ve sent a link to reset your password.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.textSecondary, height: 1.5)),
+                    const SizedBox(height: 20),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.brandNavy,
+                          padding: const EdgeInsets.symmetric(vertical: 14)),
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Done'),
+                    ),
+                  ]
+                : [
+                    Center(
+                      child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                              color: AppColors.divider,
+                              borderRadius: BorderRadius.circular(2))),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text('Reset your password',
+                        style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 6),
+                    const Text(
+                        'Enter the email on your account and we\'ll send you a reset link.',
+                        style: TextStyle(color: AppColors.textSecondary, height: 1.4)),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: emailCtrl,
+                      autofocus: true,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        prefixIcon: Icon(Icons.mail_outline),
+                      ),
+                    ),
+                    if (sheetError != null) ...[
+                      const SizedBox(height: 8),
+                      Text(sheetError!,
+                          style: const TextStyle(color: AppColors.error, fontSize: 13)),
+                    ],
+                    const SizedBox(height: 18),
+                    FilledButton(
+                      style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.brandNavy,
+                          padding: const EdgeInsets.symmetric(vertical: 14)),
+                      onPressed: submitting
+                          ? null
+                          : () async {
+                              final email = emailCtrl.text.trim();
+                              if (!_emailRe.hasMatch(email)) {
+                                setSheet(() => sheetError = 'Enter a valid email address');
+                                return;
+                              }
+                              setSheet(() {
+                                submitting = true;
+                                sheetError = null;
+                              });
+                              try {
+                                await AuthService.instance.forgotPassword(email);
+                                setSheet(() {
+                                  sent = true;
+                                  submitting = false;
+                                });
+                              } catch (_) {
+                                setSheet(() {
+                                  submitting = false;
+                                  sheetError = 'Something went wrong. Please try again.';
+                                });
+                              }
+                            },
+                      child: submitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Send reset link'),
+                    ),
+                  ],
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -218,22 +357,22 @@ class _LoginScreenState extends State<LoginScreen>
                                 const SizedBox(height: 20),
                               ],
 
-                              // Phone field
-                              _FieldLabel('Phone Number'),
+                              // Phone / email field
+                              const _FieldLabel('Phone or Email'),
                               const SizedBox(height: 8),
                               _StyledField(
                                 controller: _phoneController,
                                 focusNode: _phoneFocus,
-                                hintText: '9876543210',
-                                keyboardType: TextInputType.phone,
-                                prefixIcon: Icons.phone_outlined,
+                                hintText: '9876543210 or you@email.com',
+                                keyboardType: TextInputType.emailAddress,
+                                prefixIcon: Icons.person_outline,
                                 onSubmitted: (_) => _passFocus.requestFocus(),
                                 textInputAction: TextInputAction.next,
                               ),
                               const SizedBox(height: 20),
 
                               // Password field
-                              _FieldLabel('Password'),
+                              const _FieldLabel('Password'),
                               const SizedBox(height: 8),
                               _StyledField(
                                 controller: _passwordController,
@@ -255,8 +394,19 @@ class _LoginScreenState extends State<LoginScreen>
                                 onSubmitted: (_) => _handleLogin(),
                                 textInputAction: TextInputAction.done,
                               ),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: _openForgotPassword,
+                                  style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                      minimumSize: const Size(0, 32),
+                                      tapTargetSize: MaterialTapTargetSize.shrinkWrap),
+                                  child: const Text('Forgot password?'),
+                                ),
+                              ),
 
-                              const SizedBox(height: 28),
+                              const SizedBox(height: 12),
 
                               // CTA
                               GradientButton(
@@ -269,11 +419,13 @@ class _LoginScreenState extends State<LoginScreen>
                               const SizedBox(height: 20),
                               Center(
                                 child: Text(
-                                  'Your gym journey starts here.',
+                                  'New here? Tap Explore below to browse gyms without an account.',
+                                  textAlign: TextAlign.center,
                                   style: TextStyle(
                                       color: AppColors.textSecondary
                                           .withOpacity(0.7),
-                                      fontSize: 12),
+                                      fontSize: 12,
+                                      height: 1.4),
                                 ),
                               ),
                             ],

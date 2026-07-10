@@ -171,3 +171,21 @@ export async function findResetToken(tokenHash: string): Promise<ResetTokenRow |
 export async function markResetUsed(id: string): Promise<void> {
   await query('UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1', [id]);
 }
+
+// --- gym membership ---------------------------------------------------------
+export interface MemberGymRow {
+  gym_id: string;
+  gym_name: string;
+  gym_slug: string;
+}
+
+/** Active, non-deleted gym memberships for a member — lets the client resolve its own gym_id. */
+export async function findGymsForUser(userId: string): Promise<MemberGymRow[]> {
+  return query<MemberGymRow>(
+    `SELECT g.id AS gym_id, g.name AS gym_name, g.slug AS gym_slug
+       FROM gym_members m
+       JOIN gyms g ON g.id = m.gym_id
+      WHERE m.user_id = $1 AND m.status = 'active' AND m.deleted_at IS NULL`,
+    [userId],
+  );
+}

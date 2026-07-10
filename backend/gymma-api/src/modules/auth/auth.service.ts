@@ -224,3 +224,7 @@ export async function me(userId: string): Promise<PublicUser> {
   if (!user) throw AppError.notFound('User not found');
   return toPublic(user);
 }
+
+export async function myGyms(userId: string): Promise<repo.MemberGymRow[]> {
+  return repo.findGymsForUser(userId);
+}

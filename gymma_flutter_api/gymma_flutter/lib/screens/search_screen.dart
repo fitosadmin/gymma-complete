@@ -5,6 +5,8 @@ import '../models/gym.dart';
 import '../theme.dart';
 import '../widgets/gym_card.dart';
 import '../widgets/gym_map.dart';
+import '../widgets/gradient_button.dart';
+import '../widgets/shimmer.dart';
 
 enum _Status { open, closed }
 
@@ -25,12 +27,12 @@ const _distanceOptions = [
   (3, '1–3 km'),
   (5, '3–5 km'),
   (10, '5–10 km'),
-  (0, 'Any'),
 ];
 
 class SearchScreen extends StatefulWidget {
   final String initialQuery;
-  const SearchScreen({super.key, this.initialQuery = ''});
+  final SortKey? initialSort;
+  const SearchScreen({super.key, this.initialQuery = '', this.initialSort});
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -40,7 +42,7 @@ class _SearchScreenState extends State<SearchScreen> {
   late final TextEditingController _controller =
       TextEditingController(text: widget.initialQuery);
   String _applied = '';
-  SortKey _sort = SortKey.relevance;
+  late SortKey _sort = widget.initialSort ?? SortKey.relevance;
   bool _mapView = false;
 
   // filters
@@ -214,7 +216,23 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ]),
                 const SizedBox(height: 16),
-                const Text('Distance', style: _sectionStyle),
+                Row(children: [
+                  const Text('Distance', style: _sectionStyle),
+                  const Spacer(),
+                  if (_distance > 0)
+                    GestureDetector(
+                      onTap: () => sync(() => _distance = 0),
+                      child: const Row(mainAxisSize: MainAxisSize.min, children: [
+                        Icon(Icons.close_rounded, size: 14, color: AppColors.neutral500),
+                        SizedBox(width: 2),
+                        Text('Any distance',
+                            style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.neutral500,
+                                fontWeight: FontWeight.w600)),
+                      ]),
+                    ),
+                ]),
                 const SizedBox(height: 10),
                 Wrap(
                   spacing: 8,
@@ -222,7 +240,7 @@ class _SearchScreenState extends State<SearchScreen> {
                   children: [
                     for (final d in _distanceOptions)
                       chip(d.$2, _distance == d.$1,
-                          () => sync(() => _distance = d.$1)),
+                          () => sync(() => _distance = _distance == d.$1 ? 0 : d.$1)),
                   ],
                 ),
                 const SizedBox(height: 20),
@@ -257,17 +275,10 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                     )),
                 const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.ink,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppRadius.md))),
-                    onPressed: () => Navigator.pop(context),
-                    child: Text('Show ${_filtered.length} gyms'),
-                  ),
+                GradientButton(
+                  label: 'Show ${_filtered.length} gyms',
+                  height: 50,
+                  onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
@@ -336,7 +347,7 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final results = _filtered;
-    final grouped = _groupedFiltered.take(6).toList();
+    final grouped = _groupedFiltered;
     return Scaffold(
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(
@@ -375,9 +386,9 @@ class _SearchScreenState extends State<SearchScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _IconToggle(
-                  icon: _mapView ? Icons.grid_view_rounded : Icons.map_outlined,
-                  onTap: () => setState(() => _mapView = !_mapView),
+                _ViewToggle(
+                  mapView: _mapView,
+                  onChanged: (v) => setState(() => _mapView = v),
                 ),
               ],
             ),
@@ -385,7 +396,7 @@ class _SearchScreenState extends State<SearchScreen> {
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? _shimmerList()
           : _error != null
               ? Center(
                   child: Padding(
@@ -443,14 +454,18 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                     ),
                     Expanded(
-                      child: _mapView
+                      child: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 220),
+                        child: _mapView
                           ? Padding(
+                              key: const ValueKey('map'),
                               padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
                               child: GymMap(gyms: results),
                             )
                           : results.isEmpty
                               ? _empty()
                               : ListView.builder(
+                                  key: const ValueKey('list'),
                                   padding: const EdgeInsets.only(bottom: 24),
                                   itemCount: grouped.length,
                                   itemBuilder: (_, i) {
@@ -482,13 +497,47 @@ class _SearchScreenState extends State<SearchScreen> {
                                     );
                                   },
                                 ),
+                      ),
                     ),
                   ],
                 ),
     );
   }
 
+  Widget _shimmerList() => ListView.builder(
+        padding: const EdgeInsets.only(bottom: 24),
+        itemCount: 3,
+        itemBuilder: (_, __) => Padding(
+          padding: const EdgeInsets.only(top: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: ShimmerBox(width: 120, height: 16),
+              ),
+              SizedBox(
+                height: 220,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: const [
+                    SizedBox(width: 150, child: ShimmerCard(height: 220)),
+                    SizedBox(width: 12),
+                    SizedBox(width: 150, child: ShimmerCard(height: 220)),
+                    SizedBox(width: 12),
+                    SizedBox(width: 150, child: ShimmerCard(height: 220)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+
   Widget _empty() => const Center(
+        key: ValueKey('empty'),
         child: Padding(
           padding: EdgeInsets.all(32),
           child: Column(
@@ -510,23 +559,45 @@ class _SearchScreenState extends State<SearchScreen> {
 
 const _sectionStyle = TextStyle(fontSize: 14, fontWeight: FontWeight.w700);
 
-class _IconToggle extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _IconToggle({required this.icon, required this.onTap});
+class _ViewToggle extends StatelessWidget {
+  final bool mapView;
+  final ValueChanged<bool> onChanged;
+  const _ViewToggle({required this.mapView, required this.onChanged});
+
   @override
-  Widget build(BuildContext context) => Material(
-        color: AppColors.ink,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(AppRadius.md),
-          child: Padding(
-            padding: const EdgeInsets.all(11),
-            child: Icon(icon, color: Colors.white, size: 20),
+  Widget build(BuildContext context) {
+    Widget segment(String label, IconData icon, bool active, VoidCallback onTap) =>
+        Material(
+          color: active ? AppColors.ink : Colors.transparent,
+          child: InkWell(
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                Icon(icon, size: 16, color: active ? Colors.white : AppColors.neutral600),
+                const SizedBox(width: 5),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: active ? Colors.white : AppColors.neutral600)),
+              ]),
+            ),
           ),
-        ),
-      );
+        );
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(color: AppColors.neutral200),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        segment('List', Icons.list_rounded, !mapView, () => onChanged(false)),
+        segment('Map', Icons.map_outlined, mapView, () => onChanged(true)),
+      ]),
+    );
+  }
 }
 
 class _PillButton extends StatelessWidget {

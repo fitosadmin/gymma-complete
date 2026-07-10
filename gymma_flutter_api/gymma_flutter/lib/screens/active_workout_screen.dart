@@ -162,7 +162,12 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen>
             : 'partial';
 
     final rpe = await _showRpeDialog();
-    if (!mounted || rpe == null) return;
+    if (!mounted) return;
+    if (rpe == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Nothing lost — your logged sets are saved. Finish whenever you\'re ready.')));
+      return;
+    }
 
     setState(() => _isSubmitting = true);
     final durationMinutes = _elapsed.inMinutes;
@@ -331,7 +336,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen>
                   onChanged: (v) => setLocal(() => rpe = v),
                 ),
               ),
-              Row(
+              const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('1 · Easy',
@@ -695,7 +700,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen>
                   AnimatedRotation(
                     turns: isExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
-                    child: Icon(
+                    child: const Icon(
                       Icons.keyboard_arrow_down_rounded,
                       color: AppColors.textSecondary,
                       size: 22,
@@ -715,25 +720,25 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen>
             firstChild: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Divider(
+                const Divider(
                     height: 1,
                     thickness: 1,
                     color: AppColors.divider,
                     indent: 16,
                     endIndent: 16),
                 // Column header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 10, 16, 6),
                   child: Row(
                     children: [
                       _HeaderCell('SET', width: 36),
-                      const SizedBox(width: 10),
+                      SizedBox(width: 10),
                       _HeaderCell('REPS', expanded: true,
                           align: TextAlign.center),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       _HeaderCell('KG', expanded: true,
                           align: TextAlign.center),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8),
                       _HeaderCell('✓', width: 48,
                           align: TextAlign.center),
                     ],
@@ -958,7 +963,11 @@ class _WorkoutHeader extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // Finish button
+                  // Finish button — an early-exit option while the workout
+                  // is still in progress. Once every set is done, the
+                  // floating "All Done!" button below takes over as the
+                  // single finish action, so this one steps aside instead
+                  // of showing two buttons that do the same thing at once.
                   isSubmitting
                       ? const Padding(
                           padding: EdgeInsets.all(16),
@@ -969,35 +978,30 @@ class _WorkoutHeader extends StatelessWidget {
                                 color: Colors.white, strokeWidth: 2),
                           ),
                         )
-                      : GestureDetector(
+                      : isAllDone
+                          ? const SizedBox(width: 8)
+                          : GestureDetector(
                           onTap: onFinish,
                           child: Container(
                             margin: const EdgeInsets.only(right: 8),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),
                             decoration: BoxDecoration(
-                              gradient: isAllDone
-                                  ? LinearGradient(colors: [
-                                      AppColors.success,
-                                      AppColors.success.withGreen(180)
-                                    ])
-                                  : AppGradients.copperGradient,
+                              gradient: AppGradients.copperGradient,
                               borderRadius:
                                   BorderRadius.circular(AppRadius.md),
                               boxShadow: [
                                 BoxShadow(
-                                  color: (isAllDone
-                                          ? AppColors.success
-                                          : AppColors.brandCopper)
+                                  color: AppColors.brandCopper
                                       .withOpacity(0.35),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 )
                               ],
                             ),
-                            child: Text(
-                              isAllDone ? '✓ FINISH' : 'FINISH',
-                              style: const TextStyle(
+                            child: const Text(
+                              'FINISH',
+                              style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,

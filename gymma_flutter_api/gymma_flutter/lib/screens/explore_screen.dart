@@ -5,6 +5,8 @@ import '../models/gym.dart';
 import '../theme.dart';
 import '../widgets/gym_card.dart';
 import '../widgets/common.dart';
+import '../widgets/snap_scroll_physics.dart';
+import '../widgets/shimmer.dart';
 import 'search_screen.dart';
 import 'partner_screen.dart';
 import 'gym_detail_screen.dart';
@@ -51,15 +53,69 @@ class _ExploreScreenState extends State<ExploreScreen> {
     }
   }
 
-  void _toSearch([String? q]) => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => SearchScreen(initialQuery: q ?? '')));
+  void _toSearch([String? q, SortKey? sort]) => Navigator.of(context).push(
+      MaterialPageRoute(
+          builder: (_) => SearchScreen(initialQuery: q ?? '', initialSort: sort)));
+
+  void _openAreaPicker() {
+    final areas = _allGyms
+        .map((g) => g.area)
+        .where((a) => a.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.xl))),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text('Browse by area',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              ),
+            ),
+            if (areas.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(24),
+                child: Text('No areas available yet.',
+                    style: TextStyle(color: AppColors.neutral500)),
+              )
+            else
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: areas
+                      .map((a) => ListTile(
+                            leading: const Icon(Icons.location_on_outlined),
+                            title: Text(a),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _toSearch(a);
+                            },
+                          ))
+                      .toList(),
+                ),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.neutral0,
       body: _loading
-          ? const Center(child: CircularProgressIndicator())
+          ? _shimmer()
           : _error != null
               ? Center(
                   child: Padding(
@@ -85,11 +141,11 @@ class _ExploreScreenState extends State<ExploreScreen> {
                   slivers: [
                     SliverToBoxAdapter(child: _hero()),
                     _rail("Editor's pick", 'Top rated gyms',
-                        _featured['topRated'] ?? []),
+                        _featured['topRated'] ?? [], SortKey.rating),
                     _rail('Closest to you', 'Gyms nearby',
-                        _featured['nearby'] ?? []),
+                        _featured['nearby'] ?? [], SortKey.distance),
                     _rail('Best value', 'Affordable gyms',
-                        _featured['affordable'] ?? []),
+                        _featured['affordable'] ?? [], SortKey.priceAsc),
                     SliverToBoxAdapter(child: _whyChooseUs()),
                     SliverToBoxAdapter(child: _ownerCta()),
                     const SliverToBoxAdapter(child: SizedBox(height: 24)),
@@ -97,6 +153,74 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 ),
     );
   }
+
+  // ---- Loading skeleton ----
+  Widget _shimmer() {
+    return ListView(
+      padding: EdgeInsets.zero,
+      physics: const NeverScrollableScrollPhysics(),
+      children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
+          color: AppColors.brandNavyDark,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                ShimmerBox(
+                    width: 40, height: 40, borderRadius: BorderRadius.circular(12)),
+                const SizedBox(width: 12),
+                ShimmerBox(
+                    width: 90, height: 22, borderRadius: BorderRadius.circular(6)),
+              ]),
+              const SizedBox(height: 28),
+              ShimmerBox(
+                  width: 220, height: 32, borderRadius: BorderRadius.circular(6)),
+              const SizedBox(height: 20),
+              ShimmerBox(
+                  width: double.infinity,
+                  height: 48,
+                  borderRadius: BorderRadius.circular(24)),
+              const SizedBox(height: 24),
+              ShimmerBox(
+                  width: double.infinity,
+                  height: 92,
+                  borderRadius: BorderRadius.circular(16)),
+            ],
+          ),
+        ),
+        _shimmerRail(),
+        _shimmerRail(),
+      ],
+    );
+  }
+
+  Widget _shimmerRail() => Padding(
+        padding: const EdgeInsets.only(top: 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: ShimmerBox(width: 160, height: 16),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 320,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                children: const [
+                  SizedBox(width: 290, child: ShimmerCard(height: 320)),
+                  SizedBox(width: 14),
+                  SizedBox(width: 290, child: ShimmerCard(height: 320)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 
   // ---- Hero ----
   Widget _hero() {
@@ -112,7 +236,7 @@ class _ExploreScreenState extends State<ExploreScreen> {
 
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 48, 20, 24),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppColors.brandNavyDark,
       ),
       child: Column(
@@ -136,18 +260,25 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.5)),
             const Spacer(),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(20)),
-              child: Row(children: [
-                const Icon(Icons.location_on, color: AppColors.brandCopper, size: 16),
-                const SizedBox(width: 6),
-                Text(currentArea, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-                const SizedBox(width: 4),
-                const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 16),
-              ]),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(20),
+                onTap: _openAreaPicker,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(20)),
+                  child: Row(children: [
+                    const Icon(Icons.location_on, color: AppColors.brandCopper, size: 16),
+                    const SizedBox(width: 6),
+                    Text(currentArea, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.keyboard_arrow_down, color: Colors.white, size: 16),
+                  ]),
+                ),
+              ),
             ),
           ]),
           const SizedBox(height: 24),
@@ -244,8 +375,9 @@ class _ExploreScreenState extends State<ExploreScreen> {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E), // Slightly lighter dark box
+              color: Colors.white.withOpacity(0.06),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.08)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -274,7 +406,10 @@ class _ExploreScreenState extends State<ExploreScreen> {
   }
 
   // ---- Featured rail ----
-  Widget _rail(String eyebrow, String title, List<GymSummary> gyms) =>
+  static const double _railCardWidth = 290;
+  static const double _railGap = 14;
+
+  Widget _rail(String eyebrow, String title, List<GymSummary> gyms, SortKey sort) =>
       SliverToBoxAdapter(
         child: Padding(
           padding: const EdgeInsets.only(top: 28),
@@ -302,7 +437,8 @@ class _ExploreScreenState extends State<ExploreScreen> {
                     ),
                   ),
                   TextButton(
-                      onPressed: _toSearch, child: const Text('View all')),
+                      onPressed: () => _toSearch(null, sort),
+                      child: const Text('View all')),
                 ]),
               ),
               const SizedBox(height: 12),
@@ -310,11 +446,13 @@ class _ExploreScreenState extends State<ExploreScreen> {
                 height: 320,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
+                  physics: const SnapScrollPhysics(
+                      itemExtent: _railCardWidth + _railGap),
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: gyms.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 14),
+                  separatorBuilder: (_, __) => const SizedBox(width: _railGap),
                   itemBuilder: (_, i) =>
-                      SizedBox(width: 290, child: GymCard(gyms[i])),
+                      SizedBox(width: _railCardWidth, child: GymCard(gyms[i])),
                 ),
               ),
             ],
@@ -364,41 +502,50 @@ class _ExploreScreenState extends State<ExploreScreen> {
           const Text('Why choose Gymma',
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 16),
-          ...items.map((it) => Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppRadius.lg),
-                  border: Border.all(color: AppColors.neutral200),
+          ...items.asMap().entries.map((entry) {
+            final it = entry.value;
+            final accent = entry.key.isEven
+                ? AppColors.brandCopper
+                : AppColors.brandNavy;
+            final tint = entry.key.isEven
+                ? AppColors.primary50
+                : AppColors.secondary50;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: entry.key.isOdd ? AppColors.paperBackground : null,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: AppColors.neutral200),
+              ),
+              child: Row(children: [
+                Container(
+                  height: 44,
+                  width: 44,
+                  decoration: BoxDecoration(
+                      color: tint,
+                      borderRadius: BorderRadius.circular(AppRadius.md)),
+                  child: Icon(it.$1, color: accent),
                 ),
-                child: Row(children: [
-                  Container(
-                    height: 44,
-                    width: 44,
-                    decoration: BoxDecoration(
-                        color: AppColors.primary50,
-                        borderRadius: BorderRadius.circular(AppRadius.md)),
-                    child: Icon(it.$1, color: AppColors.primary600),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(it.$2,
+                          style: const TextStyle(fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 2),
+                      Text(it.$3,
+                          style: const TextStyle(
+                              color: AppColors.neutral500,
+                              fontSize: 13,
+                              height: 1.4)),
+                    ],
                   ),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(it.$2,
-                            style:
-                                const TextStyle(fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 2),
-                        Text(it.$3,
-                            style: const TextStyle(
-                                color: AppColors.neutral500,
-                                fontSize: 13,
-                                height: 1.4)),
-                      ],
-                    ),
-                  ),
-                ]),
-              )),
+                ),
+              ]),
+            );
+          }),
         ],
       ),
     );

@@ -75,7 +75,7 @@ class _WorkoutPlanViewScreenState extends State<WorkoutPlanViewScreen> {
             indicatorColor: AppColors.primary500,
             tabAlignment: TabAlignment.start,
             tabs: [
-              const Tab(text: 'Overview'),
+              const Tab(icon: Icon(Icons.dashboard_outlined, size: 18), text: 'Overview'),
               ..._sessions.map((s) => Tab(text: 'Day ${s['dayNumber']}')),
             ],
           ),
@@ -140,7 +140,7 @@ class _WorkoutPlanViewScreenState extends State<WorkoutPlanViewScreen> {
                 ...safetyFlags.map((f) => Padding(
                       padding: const EdgeInsets.symmetric(vertical: 2),
                       child: Text(
-                        '• ${f.replaceAll('_', ' ').toLowerCase()}',
+                        '• ${_formatSafetyFlag(f)}',
                         style: const TextStyle(fontSize: 13, color: AppColors.neutral700),
                       ),
                     )),
@@ -364,6 +364,30 @@ class _WorkoutPlanViewScreenState extends State<WorkoutPlanViewScreen> {
         ],
       ),
     );
+  }
+
+  static const _safetyFlagLabels = {
+    'MEDICAL_CLEARANCE_REQUIRED': 'Medical clearance required',
+    'CARDIOVASCULAR_RISK': 'Cardiovascular risk — intensity capped',
+    'MUSCULOSKELETAL_RISK': 'Musculoskeletal risk — load adjusted',
+    'MAX_HEART_RATE_REDUCED': 'Max heart rate reduced for this plan',
+    'PREGNANCY_POSTPARTUM': 'Pregnancy / postpartum precautions applied',
+    'METABOLIC_ADJUSTMENT': 'Metabolic adjustment applied',
+    'POST_SURGICAL': 'Post-surgical precautions applied',
+    'LOAD_RESTRICTION': 'Load restriction in place',
+  };
+
+  /// Falls back to a readable title-case version of the raw flag for any
+  /// value not yet in [_safetyFlagLabels], instead of a naive
+  /// lowercase-and-replace-underscores pass that reads like a debug string.
+  String _formatSafetyFlag(String flag) {
+    final known = _safetyFlagLabels[flag];
+    if (known != null) return known;
+    return flag
+        .split('_')
+        .where((w) => w.isNotEmpty)
+        .map((w) => '${w[0].toUpperCase()}${w.substring(1).toLowerCase()}')
+        .join(' ');
   }
 
   Widget _tag(String label, Color color) {

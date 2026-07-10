@@ -1,46 +1,204 @@
 import 'package:flutter/material.dart';
+import '../data/owner_repository.dart';
 import '../theme.dart';
+import 'send_broadcast_screen.dart';
+
 
 class OwnerDashboardScreen extends StatefulWidget {
   const OwnerDashboardScreen({super.key});
+
   @override
   State<OwnerDashboardScreen> createState() => _OwnerDashboardScreenState();
 }
 
 class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
-  final _announce = TextEditingController();
+  final OwnerRepository _repo = OwnerRepository();
+  final _addMemberNameController = TextEditingController();
+  final _addMemberPhoneController = TextEditingController();
 
-  static const _stats = [
-    (Icons.visibility_outlined, 'Profile views', '2,418', '+12%'),
-    (Icons.chat_bubble_outline, 'Inquiries', '63', '+8%'),
-    (Icons.star_outline, 'Avg. rating', '4.7', '+0.1'),
-    (Icons.people_outline, 'Members', '312', '+19'),
-  ];
+  bool _isLoading = true;
+  String? _error;
 
-  static const _inquiries = [
-    ('Rahul S.', 'Annual', '2h ago', 'New'),
-    ('Meghna R.', 'Quarterly', '5h ago', 'New'),
-    ('Aditya K.', 'Monthly', '1d ago', 'Contacted'),
-    ('Priya N.', 'Half-Yearly', '2d ago', 'Contacted'),
-    ('Sameer P.', 'Annual', '3d ago', 'Joined'),
-  ];
+  Map<String, dynamic>? _gym;
+  List<Map<String, dynamic>> _members = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
 
   @override
   void dispose() {
-    _announce.dispose();
+    _addMemberNameController.dispose();
+    _addMemberPhoneController.dispose();
     super.dispose();
   }
 
-  Color _statusBg(String s) => switch (s) {
-        'New' => AppColors.primary50,
-        'Joined' => AppColors.secondary50,
-        _ => AppColors.neutral100,
-      };
-  Color _statusFg(String s) => switch (s) {
-        'New' => AppColors.primary700,
-        'Joined' => AppColors.secondary700,
-        _ => AppColors.neutral600,
-      };
+  Future<void> _loadDashboardData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final gyms = await _repo.listOwnerGyms();
+      if (gyms.isNotEmpty) {
+        final gym = gyms.first;
+        _gym = gym;
+        final members = await _repo.getGymMembers(gym['id']);
+        _members = members;
+      }
+    } catch (e) {
+      _error = e.toString().replaceAll('Exception: ', '');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _addMember() async {
+    final fullName = _addMemberNameController.text.trim();
+    final phone = _addMemberPhoneController.text.trim();
+    if (fullName.isEmpty || phone.isEmpty) return;
+
+    if (_gym == null) return;
+
+    Navigator.of(context).pop(); // close dialog
+    setState(() => _isLoading = true);
+
+    try {
+      await _repo.addMember(_gym!['id'], fullName, phone);
+      _addMemberNameController.clear();
+      _addMemberPhoneController.clear();
+      await _loadDashboardData(); // Refresh list
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('ApiException(null): ', ''))),
+        );
+      }
+    }
+  }
+
+  Future<void> _removeMember(String memberId) async {
+    if (_gym == null) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Remove Member'),
+        content: const Text('Are you sure you want to remove this member? They will lose access to your gym.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Remove', style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await _repo.removeMember(_gym!['id'], memberId);
+      await _loadDashboardData();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceAll('ApiException(null): ', ''))),
+        );
+      }
+    }
+  }
+
+  void _showAddMemberDialog() {
+    _addMemberNameController.clear();
+    _addMemberPhoneController.clear();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Add New Member', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 18)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text('Enter member details to enroll them.', style: TextStyle(color: AppColors.neutral500, fontSize: 13)),
+            const SizedBox(height: 24),
+            const Text('Full Name', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _addMemberNameController,
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(
+                hintText: 'e.g. Rahul Sharma',
+                filled: true,
+                fillColor: AppColors.neutral0,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text('Phone Number', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+            const SizedBox(height: 6),
+            TextField(
+              controller: _addMemberPhoneController,
+              keyboardType: TextInputType.phone,
+              decoration: InputDecoration(
+                hintText: 'e.g. 9876543210',
+                filled: true,
+                fillColor: AppColors.neutral0,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary50,
+                borderRadius: BorderRadius.circular(AppRadius.md),
+                border: Border.all(color: AppColors.primary500.withOpacity(0.2)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.people_outline, color: AppColors.primary700, size: 16),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'The member can log into the Gymma mobile app using this phone number and the default password Gymma@1234.',
+                      style: const TextStyle(fontSize: 11.5, color: AppColors.primary700, height: 1.4, fontWeight: FontWeight.w500),
+                    ),
+                  )
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            style: TextButton.styleFrom(foregroundColor: AppColors.neutral600),
+            child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+          ElevatedButton(
+            onPressed: _addMember,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.neutral900,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+            ),
+            child: const Text('Add Member', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,210 +206,155 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
       backgroundColor: AppColors.neutral50,
       appBar: AppBar(
         backgroundColor: AppColors.neutral50,
-        title: const Text('Owner dashboard',
+        title: const Text('Owner Dashboard',
             style: TextStyle(fontWeight: FontWeight.w700)),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // gym header
-          const Row(children: [
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Text('Iron Temple Fitness',
-                          style: TextStyle(
-                              fontSize: 20, fontWeight: FontWeight.w800)),
-                      SizedBox(width: 8),
-                      _LiveDot(),
-                    ]),
-                    Text('Indiranagar, Bengaluru',
-                        style: TextStyle(color: AppColors.neutral500)),
-                  ]),
-            ),
-          ]),
-          const SizedBox(height: 16),
-          // profile completion
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.neutral0,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: AppColors.neutral200),
-            ),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Row(children: [
-                Text('Profile completion',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-                Spacer(),
-                Text('80%', style: TextStyle(fontWeight: FontWeight.w800)),
-              ]),
-              const SizedBox(height: 10),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.full),
-                child: const LinearProgressIndicator(
-                  value: 0.8,
-                  minHeight: 8,
-                  backgroundColor: AppColors.neutral100,
-                  color: AppColors.primary500,
-                ),
-              ),
-            ]),
-          ),
-          const SizedBox(height: 16),
-          // stats grid
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.7,
-            children: _stats
-                .map((s) => Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: AppColors.neutral0,
-                        borderRadius: BorderRadius.circular(AppRadius.lg),
-                        border: Border.all(color: AppColors.neutral200),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.campaign_outlined),
+            tooltip: 'Send Broadcast',
+            onPressed: _gym == null
+                ? null
+                : () => Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => SendBroadcastScreen(
+                        gymId: _gym!['id'] as String,
+                        gymName: _gym!['name'] as String? ?? 'Your Gym',
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Icon(s.$1, size: 18, color: AppColors.neutral500),
-                          const Spacer(),
-                          Text(s.$3,
-                              style: const TextStyle(
-                                  fontSize: 22, fontWeight: FontWeight.w800)),
-                          Row(children: [
-                            Text(s.$2,
-                                style: const TextStyle(
-                                    color: AppColors.neutral500, fontSize: 12)),
-                            const Spacer(),
-                            Text(s.$4,
-                                style: const TextStyle(
-                                    color: AppColors.secondary700,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600)),
-                          ]),
-                        ],
-                      ),
-                    ))
-                .toList(),
+                    )),
           ),
-          const SizedBox(height: 8),
-          // quick actions
-          Row(children: [
-            _action(Icons.edit_outlined, 'Edit profile'),
-            const SizedBox(width: 10),
-            _action(Icons.add_photo_alternate_outlined, 'Upload photos'),
-            const SizedBox(width: 10),
-            _action(Icons.notifications_none, 'Notify'),
-          ]),
-          const SizedBox(height: 20),
-          const Text('Recent inquiries',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-          const SizedBox(height: 10),
-          Container(
-            decoration: BoxDecoration(
-              color: AppColors.neutral0,
-              borderRadius: BorderRadius.circular(AppRadius.lg),
-              border: Border.all(color: AppColors.neutral200),
-            ),
-            child: Column(
-              children: [
-                for (int i = 0; i < _inquiries.length; i++) ...[
-                  if (i > 0) const Divider(height: 1),
-                  ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: AppColors.neutral100,
-                      child: Text(_inquiries[i].$1[0],
-                          style: const TextStyle(
-                              color: AppColors.neutral700,
-                              fontWeight: FontWeight.w700)),
-                    ),
-                    title: Text(_inquiries[i].$1,
-                        style: const TextStyle(fontWeight: FontWeight.w600)),
-                    subtitle:
-                        Text('${_inquiries[i].$2} plan · ${_inquiries[i].$3}'),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                          color: _statusBg(_inquiries[i].$4),
-                          borderRadius: BorderRadius.circular(AppRadius.full)),
-                      child: Text(_inquiries[i].$4,
-                          style: TextStyle(
-                              color: _statusFg(_inquiries[i].$4),
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                  ),
-                ]
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          const Text('Send announcement',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-          const SizedBox(height: 10),
-          TextField(
-            controller: _announce,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: 'Share an update with your members…',
-              filled: true,
-              fillColor: AppColors.neutral0,
-              border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md)),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.ink,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md))),
-              onPressed: () {
-                if (_announce.text.trim().isEmpty) return;
-                _announce.clear();
-                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                    content: Text('Announcement sent to members')));
-              },
-              child: const Text('Send to members',
-                  style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ),
-          const SizedBox(height: 24),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadDashboardData,
+          )
         ],
       ),
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                        const SizedBox(height: 16),
+                        Text(_error!, textAlign: TextAlign.center),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                            onPressed: _loadDashboardData,
+                            child: const Text('Retry'))
+                      ],
+                    ),
+                  ),
+                )
+              : _gym == null
+                  ? const Center(
+                      child: Text('No gym found for your account.\nPlease contact support.',
+                          textAlign: TextAlign.center))
+                  : _buildDashboard(),
     );
   }
 
-  Widget _action(IconData icon, String label) => Expanded(
-        child: OutlinedButton(
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.neutral700,
-            side: const BorderSide(color: AppColors.neutral200),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(AppRadius.md)),
+  Widget _buildDashboard() {
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Gym Header
+        Row(children: [
+          Expanded(
+            child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(children: [
+                    Text(_gym!['name'] ?? 'Your Gym',
+                        style: const TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.w800)),
+                    const SizedBox(width: 8),
+                    const _LiveDot(),
+                  ]),
+                  Text('${_gym!['city'] ?? 'Bengaluru'}, ${_gym!['area'] ?? 'Area'}',
+                      style: const TextStyle(color: AppColors.neutral500)),
+                ]),
           ),
-          onPressed: () => ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text('$label (demo)'))),
-          child: Column(children: [
-            Icon(icon, size: 20),
-            const SizedBox(height: 4),
-            Text(label, style: const TextStyle(fontSize: 11)),
-          ]),
+        ]),
+        const SizedBox(height: 24),
+
+        // Member Management Section
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Member Management',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+            TextButton.icon(
+              onPressed: _showAddMemberDialog,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add Member'),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.primary700,
+                backgroundColor: AppColors.primary50,
+              ),
+            )
+          ],
         ),
-      );
+        const SizedBox(height: 12),
+
+        if (_members.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: AppColors.neutral0,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.neutral200),
+            ),
+            child: const Center(
+              child: Text('No active members.\nAdd members using the button above.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.neutral500)),
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.neutral0,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: AppColors.neutral200),
+            ),
+            child: ListView.separated(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _members.length,
+              separatorBuilder: (ctx, i) => const Divider(height: 1),
+              itemBuilder: (ctx, i) {
+                final member = _members[i];
+                final fullName = member['full_name'] as String? ?? 'Unknown User';
+                final email = member['email'] as String? ?? '';
+                final membershipId = member['membership_id'] as String?;
+
+                if (membershipId == null) return const SizedBox();
+
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: AppColors.primary50,
+                    child: Text(fullName.isNotEmpty ? fullName[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                            color: AppColors.primary700,
+                            fontWeight: FontWeight.w700)),
+                  ),
+                  title: Text(fullName,
+                      style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(email),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.remove_circle_outline, color: AppColors.error),
+                    onPressed: () => _removeMember(membershipId),
+                    tooltip: 'Remove Member',
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 class _LiveDot extends StatelessWidget {

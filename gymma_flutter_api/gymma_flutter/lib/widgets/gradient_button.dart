@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../theme.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -53,6 +54,7 @@ class _GradientButtonState extends State<GradientButton>
       onTapUp: enabled
           ? (_) {
               _ctrl.reverse();
+              HapticFeedback.lightImpact();
               widget.onPressed?.call();
             }
           : null,

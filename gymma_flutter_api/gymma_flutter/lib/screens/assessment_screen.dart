@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../data/fitos_repository.dart';
 import '../theme.dart';
+import '../widgets/gradient_button.dart';
 
 class AssessmentScreen extends StatefulWidget {
   const AssessmentScreen({super.key});
@@ -14,7 +15,16 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
   bool _isSubmitting = false;
   final PageController _pageController = PageController();
   int _currentPage = 0;
-  static const int _totalPages = 6;
+  static const int _totalPages = 7;
+  static const List<String> _pageTitles = [
+    'About You',
+    'Goals',
+    'Training History',
+    'Schedule',
+    'Health & Recovery',
+    'Mobility & Preferences',
+    'Review & Confirm',
+  ];
 
   // Controllers for 1RM numeric inputs (only shown when E >= 20 and toggle is on)
   late final TextEditingController _squatRmCtrl;
@@ -142,13 +152,40 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     }
   }
 
-  void _prevPage() {
+  Future<void> _prevPage() async {
     if (_currentPage > 0) {
       _pageController.previousPage(
           duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
-    } else {
-      Navigator.pop(context);
+      return;
     }
+    final discard = await _confirmDiscard();
+    if (discard && mounted) Navigator.pop(context);
+  }
+
+  /// Shown whenever the user tries to leave page 1 — via the app bar arrow
+  /// or the system back gesture, both routed through here so neither one
+  /// can silently drop a half-finished assessment.
+  Future<bool> _confirmDiscard() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Discard assessment?'),
+        content: const Text(
+            'You\'ll lose your answers on this assessment. You can start it again anytime from Workouts.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Keep going'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+    return result ?? false;
   }
 
   Future<void> _submitAssessment() async {
@@ -192,39 +229,68 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Fitos AI Assessment'),
-        leading: IconButton(
-            icon: const Icon(Icons.arrow_back), onPressed: _prevPage),
-        elevation: 0,
-        backgroundColor: Colors.white,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _prevPage();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.paperBackground,
+        appBar: AppBar(
+          title: const Text('Fitos AI Assessment'),
+          leading: IconButton(
+              icon: const Icon(Icons.arrow_back), onPressed: _prevPage),
+          elevation: 0,
+          backgroundColor: AppColors.paperBackground,
+        ),
+        body: _isSubmitting ? _buildLoadingState() : _buildForm(),
       ),
-      body: _isSubmitting ? _buildLoadingState() : _buildForm(),
+    );
+  }
+
+  Widget _buildStepIndicator() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 14, 24, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              for (int i = 0; i < _totalPages; i++) ...[
+                Expanded(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: i <= _currentPage
+                          ? AppColors.brandCopper
+                          : AppColors.divider,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                  ),
+                ),
+                if (i != _totalPages - 1) const SizedBox(width: 5),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Step ${_currentPage + 1} of $_totalPages · ${_pageTitles[_currentPage]}',
+            style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildForm() {
     return Column(
       children: [
-        LinearProgressIndicator(
-          value: (_currentPage + 1) / _totalPages,
-          backgroundColor: AppColors.neutral200,
-          color: AppColors.primary500,
-          minHeight: 4,
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Row(
-            children: [
-              Text(
-                'Step ${_currentPage + 1} of $_totalPages',
-                style: const TextStyle(color: AppColors.neutral500, fontSize: 13),
-              ),
-            ],
-          ),
-        ),
+        _buildStepIndicator(),
         Expanded(
           child: PageView(
             controller: _pageController,
@@ -237,27 +303,43 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
               _buildPage4Availability(),
               _buildPage5HealthRecovery(),
               _buildPage6MobilityPrefs(),
+              _buildPage7Review(),
             ],
           ),
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          child: SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _nextPage,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary500,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md)),
+          child: Row(
+            children: [
+              if (_currentPage > 0) ...[
+                SizedBox(
+                  height: 56,
+                  child: OutlinedButton(
+                    onPressed: _prevPage,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: const BorderSide(color: AppColors.neutral300),
+                      padding: const EdgeInsets.symmetric(horizontal: 18),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.md)),
+                    ),
+                    child: const Icon(Icons.arrow_back_rounded, size: 20),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
+              Expanded(
+                child: GradientButton(
+                  label: _currentPage == _totalPages - 1
+                      ? 'Generate My Plan'
+                      : 'Continue',
+                  icon: _currentPage == _totalPages - 1
+                      ? Icons.auto_awesome_rounded
+                      : Icons.arrow_forward_rounded,
+                  onPressed: _nextPage,
+                ),
               ),
-              child: Text(
-                _currentPage == _totalPages - 1 ? 'Generate My Plan' : 'Continue',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-            ),
+            ],
           ),
         ),
       ],
@@ -295,12 +377,12 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
         const SizedBox(height: 8),
         _label('Body Composition Goal'),
         ...[
-          ('Lose fat', 'Lose fat'),
-          ('Build muscle', 'Build muscle'),
-          ('Recomposition (lose fat + gain muscle)', 'Recomposition'),
-          ('Maintain current composition', 'Maintain'),
-          ('Improve athletic performance', 'Performance'),
-        ].map((p) => _radioTile(p.$1, p.$2, 'S1_BODY_COMP_GOAL')),
+          ('Lose fat', 'Lose fat', Icons.local_fire_department_outlined),
+          ('Build muscle', 'Build muscle', Icons.fitness_center_rounded),
+          ('Recomposition (lose fat + gain muscle)', 'Recomposition', Icons.autorenew_rounded),
+          ('Maintain current composition', 'Maintain', Icons.balance_rounded),
+          ('Improve athletic performance', 'Performance', Icons.speed_rounded),
+        ].map((p) => _radioTile(p.$1, p.$2, 'S1_BODY_COMP_GOAL', icon: p.$3)),
       ],
     );
   }
@@ -427,9 +509,12 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
         _buildIntSlider('Session Length', 'S5_TIME', 15, 120, unit: 'min'),
         const SizedBox(height: 8),
         _label('Gym Type'),
-        _radioTile('Commercial Gym (full equipment)', 'Commercial', 'S5_GYM_TYPE'),
-        _radioTile('Home Gym (limited equipment)', 'Home', 'S5_GYM_TYPE'),
-        _radioTile('Outdoor / Calisthenics Park', 'Outdoor', 'S5_GYM_TYPE'),
+        _radioTile('Commercial Gym (full equipment)', 'Commercial', 'S5_GYM_TYPE',
+            icon: Icons.apartment_rounded),
+        _radioTile('Home Gym (limited equipment)', 'Home', 'S5_GYM_TYPE',
+            icon: Icons.home_outlined),
+        _radioTile('Outdoor / Calisthenics Park', 'Outdoor', 'S5_GYM_TYPE',
+            icon: Icons.park_outlined),
       ],
     );
   }
@@ -531,28 +616,61 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
             'Fitos will apply conservative loading. Share this plan with your physiotherapist before starting.',
           ),
 
-        // Medical clearance toggle + error if blocked
-        SwitchListTile(
-          title: const Text('Medically cleared to exercise'),
-          subtitle: const Text('I have no known conditions requiring medical supervision'),
-          value: !isMedicallyBlocked,
-          activeColor: AppColors.primary500,
-          onChanged: (v) {
-            setState(() {
-              final blocked = !v;
-              _answers['S0_Q1'] = blocked;
-              _answers['S0_Q2'] = blocked;
-              _answers['S0_Q3'] = blocked;
-              _answers['S0_Q4'] = blocked;
-              _answers['S0_Q5'] = blocked;
-              _answers['S0_Q7'] = blocked;
-            });
-          },
+        // Medical clearance toggle — the one switch on this screen that can
+        // hard-block plan generation, so it gets its own visually distinct
+        // treatment instead of looking like every other toggle above it.
+        Container(
+          margin: const EdgeInsets.only(top: 4),
+          decoration: BoxDecoration(
+            border: Border.all(
+                color: isMedicallyBlocked
+                    ? AppColors.error.withOpacity(0.5)
+                    : AppColors.primary500.withOpacity(0.35)),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Row(children: [
+                  Icon(Icons.shield_outlined,
+                      size: 15,
+                      color: isMedicallyBlocked ? AppColors.error : AppColors.primary600),
+                  const SizedBox(width: 6),
+                  Text('SAFETY GATE — REQUIRED TO GENERATE A PLAN',
+                      style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                          color: isMedicallyBlocked ? AppColors.error : AppColors.primary600)),
+                ]),
+              ),
+              SwitchListTile(
+                title: const Text('Medically cleared to exercise'),
+                subtitle: const Text('I have no known conditions requiring medical supervision'),
+                value: !isMedicallyBlocked,
+                activeColor: AppColors.primary500,
+                onChanged: (v) {
+                  setState(() {
+                    final blocked = !v;
+                    _answers['S0_Q1'] = blocked;
+                    _answers['S0_Q2'] = blocked;
+                    _answers['S0_Q3'] = blocked;
+                    _answers['S0_Q4'] = blocked;
+                    _answers['S0_Q5'] = blocked;
+                    _answers['S0_Q7'] = blocked;
+                  });
+                },
+              ),
+            ],
+          ),
         ),
-        if (isMedicallyBlocked)
+        if (isMedicallyBlocked) ...[
+          const SizedBox(height: 8),
           _buildErrorBanner(
             'Medical clearance required. Plan generation will be blocked until you consult a healthcare provider and toggle this ON.',
           ),
+        ],
       ],
     );
   }
@@ -611,6 +729,85 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
       ],
     );
   }
+
+  // ─── Page 7: Review & Confirm ────────────────────────────────────────────
+  Widget _buildPage7Review() {
+    final isMedicallyBlocked = _answers['S0_Q2'] as bool;
+    final hasInjury = _answers['S6_CURRENT_INJURY'] as bool;
+    final hasSurgery = _answers['S6_PAST_SURGERY'] as bool;
+
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        _sectionHeader('Review & Confirm',
+            'Check your answers before Fitos AI builds your plan.'),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AppColors.neutral200),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Column(children: [
+            _reviewRow('Primary goal', _humanise(_answers['S4_PRIMARY'] as String)),
+            _reviewRow('Body composition goal', _answers['S1_BODY_COMP_GOAL'] as String),
+            _reviewRow('Training experience', _answers['S3_DURATION'] as String),
+            _reviewRow('Schedule',
+                '${_answers['S5_DAYS']} days/wk · ${_answers['S5_TIME']} min/session'),
+            _reviewRow('Gym type', _humanise(_answers['S5_GYM_TYPE'] as String)),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AppColors.neutral200),
+            borderRadius: BorderRadius.circular(AppRadius.md),
+          ),
+          child: Column(children: [
+            _reviewRow('Medically cleared', isMedicallyBlocked ? 'No' : 'Yes',
+                valueColor: isMedicallyBlocked ? AppColors.error : AppColors.success),
+            _reviewRow('Current injury', hasInjury ? 'Yes' : 'No'),
+            _reviewRow('Recent surgery', hasSurgery ? 'Yes' : 'No'),
+          ]),
+        ),
+        const SizedBox(height: 16),
+        if (isMedicallyBlocked)
+          _buildErrorBanner(
+              'Medical clearance is off, so plan generation will be blocked on the next step until you turn it on.'),
+        const Text(
+          'Something not right? Use the back arrow above to fix it before generating your plan.',
+          style: TextStyle(color: AppColors.neutral500, fontSize: 13, height: 1.4),
+        ),
+      ],
+    );
+  }
+
+  Widget _reviewRow(String label, String value, {Color? valueColor}) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 2,
+              child: Text(label,
+                  style: const TextStyle(color: AppColors.neutral500, fontSize: 13)),
+            ),
+            Expanded(
+              flex: 3,
+              child: Text(value,
+                  textAlign: TextAlign.right,
+                  style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: valueColor ?? AppColors.neutral900)),
+            ),
+          ],
+        ),
+      );
+
+  String _humanise(String v) => v.replaceAll('_', ' ');
 
   // ─── Shared Widgets ───────────────────────────────────────────────────────
 
@@ -717,7 +914,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
     );
   }
 
-  Widget _radioTile(String label, String value, String key) {
+  Widget _radioTile(String label, String value, String key, {IconData? icon}) {
     final isSecondary = key == 'S4_SECONDARY_DISPLAY';
     String? currentSecondary = _answers['S4_SECONDARY'] as String?;
     final isSelected = isSecondary
@@ -755,6 +952,12 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
               color: isSelected ? AppColors.primary500 : AppColors.neutral400,
               size: 20,
             ),
+            if (icon != null) ...[
+              const SizedBox(width: 10),
+              Icon(icon,
+                  size: 18,
+                  color: isSelected ? AppColors.primary600 : AppColors.neutral500),
+            ],
             const SizedBox(width: 12),
             Expanded(
               child: Text(
