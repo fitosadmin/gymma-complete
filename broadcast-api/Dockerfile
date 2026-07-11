@@ -12,5 +12,5 @@ RUN npm run build
 # Default process is the REST + WebSocket server. The worker deploys from
 # this SAME image on Render — create a second service pointing at this repo
 # with Docker Command overridden to `node dist/worker.js`.
-EXPOSE 3002 3001
+EXPOSE 3002
 CMD ["node", "dist/server.js"]

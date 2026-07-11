@@ -1,7 +1,10 @@
 // src/server.ts
 // Boots the REST API (Express) and the real-time WebSocket server
-// (Socket.io) as two separate HTTP listeners — PORT for REST, WS_PORT for
-// `/ws/broadcasts` — so they can be scaled or deployed independently.
+// (Socket.io) on the SAME HTTP listener/port (`PORT`) — PaaS platforms like
+// Render only forward external traffic to one port per web service, so a
+// second listener on WS_PORT would be unreachable from outside the
+// container. Socket.io multiplexes onto the Express server via its own
+// `/ws/broadcasts` namespace/path instead.
 import { createServer } from 'node:http';
 import { createApp } from './app';
 import { createSocketServer } from './websocket/socket-server';
@@ -15,21 +18,16 @@ async function bootstrap() {
 
   const app = createApp();
   const apiServer = createServer(app);
+  const io = createSocketServer(apiServer);
   apiServer.listen(env.PORT, () => {
-    logger.info(`broadcast-api REST listening on :${env.PORT} (${env.NODE_ENV})`);
-  });
-
-  const wsHttpServer = createServer();
-  const io = createSocketServer(wsHttpServer);
-  wsHttpServer.listen(env.WS_PORT, () => {
-    logger.info(`broadcast-api websocket listening on :${env.WS_PORT} (/ws/broadcasts)`);
+    logger.info(`broadcast-api REST + websocket listening on :${env.PORT} (${env.NODE_ENV})`);
   });
 
   const shutdown = async (signal: string) => {
     logger.info(`${signal} received, shutting down`);
     setTimeout(() => process.exit(1), 10_000).unref(); // hard-exit guard
-    await new Promise<void>((resolve) => apiServer.close(() => resolve()));
     await io.close();
+    await new Promise<void>((resolve) => apiServer.close(() => resolve()));
     await closeDatabase().catch(() => undefined);
     await closeRedis().catch(() => undefined);
     logger.info('shutdown complete');

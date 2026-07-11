@@ -24,12 +24,12 @@ Both `npm run dev` and `npm run worker` need to be running for broadcasts to
 actually fan out to receipts and send push notifications — the API process
 only inserts the broadcast row and hands the rest off to the queue.
 
-## Deploying on Render (mirrors gymma-api's setup)
+## Deploying (web service on Render, worker on Cloud Run)
 
-This needs **two Render services**, both built from this repo's `broadcast-api/`
-root directory using the included `Dockerfile`:
-
-1. **Web service** (`broadcast-api`) — runs the REST API + WebSocket server
+1. **Web service** (`broadcast-api`, Render) — runs the REST API + WebSocket
+   server on a **single port** (Socket.io is multiplexed onto the same HTTP
+   server as Express — Render only forwards external traffic to one port
+   per web service, so a second listener would be unreachable)
    - Root directory: `broadcast-api`
    - Environment: Docker
    - Env vars: copy `DATABASE_URL`, `REDIS_URL`, `ACCESS_TOKEN_SECRET` **values** from
@@ -39,17 +39,25 @@ root directory using the included `Dockerfile`:
    - Render auto-assigns `$PORT` — either read it into `PORT`, or leave the app's
      own `PORT` default and set Render's port mapping to `3002`
 
-2. **Background worker service** (`broadcast-worker`) — runs the BullMQ workers
-   - Same repo, same root directory, same Dockerfile
-   - Service type: **Background Worker** (not Web Service — it has no HTTP port)
-   - Docker Command override: `node dist/worker.js`
-   - Same env vars as the web service
+2. **Background worker** (`broadcast-worker`) — runs the BullMQ workers.
+   Render's free tier has no "Background Worker" service type, so this runs
+   on **Google Cloud Run** instead:
+   - Same repo, `broadcast-api/` as the build context, `broadcast-api/cloudbuild.yaml`
+     builds + pushes the image to Artifact Registry (Cloud Build does **not**
+     auto-deploy — deploying a new revision from that image is a manual step
+     in the Cloud Run console)
+   - Container start command override: `node dist/worker.js`
+   - Same env vars as the web service (`DATABASE_URL`, `REDIS_URL`,
+     `BULLMQ_REDIS_URL`, `ACCESS_TOKEN_SECRET`, `FCM_*`)
+   - The worker has no real HTTP work to do, but Cloud Run refuses to deploy
+     a container that never listens on `$PORT` — `worker.ts` opens a bare
+     liveness HTTP server for that reason only
 
 3. **Run the migration once**, either via Render's Shell tab on the web service
    (`npm run migrate`) or as a Render One-Off Job.
 
-Both services being on Render's free tier will spin down with inactivity —
-same caveat gymma-api already has (~50s cold-start delay).
+The Render web service is on the free tier and will spin down with
+inactivity (~50s cold-start delay). Cloud Run scales to zero similarly.
 
 ## Auth model
 
@@ -76,5 +84,6 @@ GET    /api/v1/health
 GET    /api/v1/metrics
 ```
 
-WebSocket: connect to `/ws/broadcasts` namespace on `WS_PORT` with
-`auth: { token: "<JWT>" }` — the server auto-joins the caller's gym rooms.
+WebSocket: connect to the `/ws/broadcasts` namespace on the **same host/port**
+as the REST API (`wss://<host>` in production, `ws://localhost:3002` locally)
+with `auth: { token: "<JWT>" }` — the server auto-joins the caller's gym rooms.
