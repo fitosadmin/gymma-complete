@@ -25,20 +25,6 @@ steps:
       - 'push'
       - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/broadcast-api:latest'
 
-  # Deploy to Cloud Run
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    entrypoint: gcloud
-    args:
-      - 'run'
-      - 'deploy'
-      - 'gymma-complete-git'
-      - '--image=europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/broadcast-api:$COMMIT_SHA'
-      - '--region=europe-west1'
-      - '--command=node'
-      - '--args=dist/worker.js'
-      - '--platform=managed'
-      - '--no-traffic'
-
 images:
   - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/broadcast-api:$COMMIT_SHA'
   - 'europe-west1-docker.pkg.dev/$PROJECT_ID/cloud-run-source-deploy/broadcast-api:latest'
