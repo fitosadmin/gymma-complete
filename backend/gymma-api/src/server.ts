@@ -2,11 +2,15 @@
 import { createApp } from './app';
 import { env } from './config/env';
 import { logger } from './config/logger';
-import { assertDatabaseReady, closeDatabase } from './config/database';
+import { closeDatabase } from './config/database';
+import { runMigrations } from './config/migrate';
 import { closeRedis } from './config/redis';
 
 async function bootstrap() {
-  await assertDatabaseReady();
+  // Run migrations on every boot — self-heals after Neon compute restarts
+  // that drop tables while leaving _migrations tracking records intact.
+  logger.info('running migrations…');
+  await runMigrations();
 
   const app = createApp();
   const server = app.listen(env.PORT, () => {
