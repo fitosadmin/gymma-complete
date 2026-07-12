@@ -1,6 +1,7 @@
 // migrations/run.ts
 // Minimal forward-only migration runner. Applies *.sql in name order,
-// tracks applied files in a `_migrations` table.
+// tracks applied files in a `_migrations` table. Mirrors broadcast-api's
+// migrations/run.ts.
 import 'dotenv/config';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
@@ -14,17 +15,15 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
  * compute restart), we remove the stale tracking rows so they re-apply.
  */
 async function clearDesyncedMigrations(client: import('pg').PoolClient): Promise<void> {
-  // Check if the key tables actually exist
   const { rows } = await client.query<{ table_name: string }>(
     `SELECT table_name FROM information_schema.tables
      WHERE table_schema = 'public'
-       AND table_name IN ('broadcasts', 'diet_plans', 'user_devices', 'broadcast_receipts', 'device_push_failures')`,
+       AND table_name IN ('diet_plans')`,
   );
   const existingTables = new Set(rows.map((r) => r.table_name));
 
   const migrationsSuspect: string[] = [];
-  if (!existingTables.has('broadcasts')) migrationsSuspect.push('001_broadcasts.sql');
-  if (!existingTables.has('diet_plans'))  migrationsSuspect.push('001_diet_plans.sql');
+  if (!existingTables.has('diet_plans')) migrationsSuspect.push('001_diet_plans.sql');
 
   if (migrationsSuspect.length > 0) {
     console.warn(

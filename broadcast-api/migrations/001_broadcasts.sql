@@ -24,7 +24,7 @@ $$;
 -- ===========================================================================
 -- broadcasts
 -- ===========================================================================
-CREATE TABLE broadcasts (
+CREATE TABLE IF NOT EXISTS broadcasts (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id     UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   sender_id  UUID NOT NULL REFERENCES users(id),
@@ -41,16 +41,16 @@ CREATE TABLE broadcasts (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_broadcasts_gym_sent ON broadcasts(gym_id, sent_at DESC);
+CREATE INDEX IF NOT EXISTS idx_broadcasts_gym_sent ON broadcasts(gym_id, sent_at DESC);
 
-CREATE TRIGGER trg_broadcasts_updated
+CREATE OR REPLACE TRIGGER trg_broadcasts_updated
 BEFORE UPDATE ON broadcasts
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ===========================================================================
 -- broadcast_receipts
 -- ===========================================================================
-CREATE TABLE broadcast_receipts (
+CREATE TABLE IF NOT EXISTS broadcast_receipts (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   broadcast_id  UUID NOT NULL REFERENCES broadcasts(id) ON DELETE CASCADE,
   user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -62,12 +62,12 @@ CREATE TABLE broadcast_receipts (
   UNIQUE (broadcast_id, user_id)
 );
 
-CREATE INDEX idx_receipts_gym_user_read ON broadcast_receipts(gym_id, user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_receipts_gym_user_read ON broadcast_receipts(gym_id, user_id, is_read);
 
 -- ===========================================================================
 -- user_devices
 -- ===========================================================================
-CREATE TABLE user_devices (
+CREATE TABLE IF NOT EXISTS user_devices (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   fcm_token     VARCHAR(512) NOT NULL,
@@ -79,14 +79,14 @@ CREATE TABLE user_devices (
   UNIQUE (user_id, fcm_token)
 );
 
-CREATE INDEX idx_user_devices_token ON user_devices(fcm_token);
-CREATE INDEX idx_user_devices_user ON user_devices(user_id) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_user_devices_token ON user_devices(fcm_token);
+CREATE INDEX IF NOT EXISTS idx_user_devices_user ON user_devices(user_id) WHERE is_active = TRUE;
 
 -- ===========================================================================
 -- device_push_failures — tracks consecutive FCM failures per device so the
 -- daily cleanup job can deactivate persistently-failing tokens.
 -- ===========================================================================
-CREATE TABLE device_push_failures (
+CREATE TABLE IF NOT EXISTS device_push_failures (
   fcm_token             VARCHAR(512) PRIMARY KEY,
   consecutive_failures  SMALLINT NOT NULL DEFAULT 0,
   last_failed_at        TIMESTAMP
