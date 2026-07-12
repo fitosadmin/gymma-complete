@@ -20,8 +20,18 @@ export async function setGauge(name: string, value: number): Promise<void> {
 }
 
 export async function getCounter(name: string): Promise<number> {
-  const v = await redis.get(`${KEY_PREFIX}${name}`);
-  return v ? Number(v) : 0;
+  try {
+    const v = await redis.get(`${KEY_PREFIX}${name}`);
+    return v ? Number(v) : 0;
+  } catch (err) {
+    // Called from recordPushResult() right after a real FCM send — letting
+    // this throw would fail the whole BullMQ job *after* pushes already
+    // went out, causing a retry that sends duplicate notifications to
+    // users who already got them. A metric read failing should never be
+    // able to do that.
+    logger.warn({ err, name }, 'failed to read metric counter');
+    return 0;
+  }
 }
 
 /** Records a push batch result and warns if the rolling failure rate crosses 5%. */

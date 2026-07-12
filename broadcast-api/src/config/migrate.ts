@@ -15,12 +15,19 @@ export async function runMigrations(): Promise<void> {
   try {
     await client.query(`CREATE TABLE IF NOT EXISTS _migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
 
-    // Auto-heal: if broadcasts table is gone but tracking record exists, clear it
+    // Auto-heal: 001_broadcasts.sql creates FOUR tables. If any one of them
+    // is gone but the migration is still tracked as applied, the other
+    // three surviving isn't enough — re-run it. (Checking only `broadcasts`
+    // here missed desyncs where e.g. user_devices alone had vanished.)
+    const managedTables = ['broadcasts', 'user_devices', 'broadcast_receipts', 'device_push_failures'];
     const { rows: existing } = await client.query<{ table_name: string }>(
-      `SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('broadcasts','user_devices','broadcast_receipts','device_push_failures')`,
+      `SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name = ANY($1)`,
+      [managedTables],
     );
-    if (!existing.some((r) => r.table_name === 'broadcasts')) {
-      logger.warn('broadcasts table missing — clearing stale migration records (Neon desync)');
+    const existingSet = new Set(existing.map((r) => r.table_name));
+    const missing = managedTables.filter((t) => !existingSet.has(t));
+    if (missing.length > 0) {
+      logger.warn({ missing }, 'broadcast tables missing — clearing stale migration records (Neon desync)');
       await client.query(`DELETE FROM _migrations WHERE name = '001_broadcasts.sql'`);
     }
 
