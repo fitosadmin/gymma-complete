@@ -4,7 +4,8 @@
 // request path. Deploy/scale independently from the API/WS processes.
 import { createServer } from 'node:http';
 import { logger } from './config/logger';
-import { assertDatabaseReady, closeDatabase } from './config/database';
+import { closeDatabase } from './config/database';
+import { runMigrations } from './config/migrate';
 import { closeRedis } from './config/redis';
 import { startBroadcastDeliveryWorker } from './broadcast/jobs/broadcast-delivery.worker';
 import { startPushNotificationWorker } from './broadcast/jobs/push-notification.worker';
@@ -12,7 +13,13 @@ import { startCleanupWorker, scheduleCleanupCron } from './broadcast/jobs/cleanu
 import { closeQueues } from './broadcast/jobs/queues';
 
 async function bootstrap() {
-  await assertDatabaseReady();
+  // Run migrations on every boot — self-heals after Neon compute restarts,
+  // same as server.ts. Without this the worker just crash-loops forever on
+  // "table not found" if the web service hasn't happened to restart (and
+  // thus self-heal) recently.
+  logger.info('running migrations…');
+  await runMigrations();
+  logger.info('migrations done');
 
   const broadcastDeliveryWorker = startBroadcastDeliveryWorker();
   const pushNotificationWorker = startPushNotificationWorker();
