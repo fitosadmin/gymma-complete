@@ -2,12 +2,16 @@
 import app from './app';
 import { env } from './config/env';
 import { pool } from './config/database';
+import { runMigrations } from './config/migrate';
 
 async function start() {
-  // Verify DB connectivity before accepting traffic
+  // Run migrations on every boot — self-heals if a physical table went
+  // missing while _migrations still thinks it's applied (observed live,
+  // root cause unconfirmed). Also verifies basic DB connectivity.
   try {
-    await pool.query('SELECT 1');
-    console.log('✅  Database connected');
+    console.log('running migrations…');
+    await runMigrations();
+    console.log('✅  Database connected, migrations done');
   } catch (err) {
     console.error('❌  Database connection failed:', err);
     process.exit(1);
