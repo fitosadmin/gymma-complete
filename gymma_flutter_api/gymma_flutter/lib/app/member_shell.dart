@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../screens/member_dashboard_screen.dart';
 import '../screens/workout_dashboard_screen.dart';
+import '../screens/diet_dashboard_screen.dart';
 import '../screens/profile_screen.dart';
 
 import '../widgets/gymma_nav_bar.dart';
@@ -20,6 +21,7 @@ class _MemberShellState extends State<MemberShell> {
     final pages = [
       const MemberDashboardScreen(),
       const WorkoutDashboardScreen(),
+      const DietDashboardScreen(),
       const ProfileScreen(),
     ];
 
@@ -31,6 +33,7 @@ class _MemberShellState extends State<MemberShell> {
         items: const [
           GymmaNavItem(icon: Icons.dashboard_outlined, activeIcon: Icons.dashboard_rounded, label: 'Home'),
           GymmaNavItem(icon: Icons.fitness_center_outlined, activeIcon: Icons.fitness_center_rounded, label: 'Workouts'),
+          GymmaNavItem(icon: Icons.restaurant_outlined, activeIcon: Icons.restaurant_rounded, label: 'Diet'),
           GymmaNavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profile'),
         ],
       ),

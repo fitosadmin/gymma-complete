@@ -5,6 +5,7 @@ build/
 .env
 .env.*
 .DS_Store
+*firebase-adminsdk*.json
 gymma_flutter_api/gymma_flutter/build/
 gymma_flutter_api/gymma_flutter/.dart_tool/
 gymma_flutter_api/gymma_flutter/linux/flutter/ephemeral/

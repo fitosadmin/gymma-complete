@@ -20,4 +20,18 @@ async function bootstrap() {
   console.log(`FITOS API listening on port ${port}`);
 }
 
+// Last-resort safety net — Nest's global exception filter catches everything
+// thrown inside the request lifecycle, so this shouldn't fire in practice,
+// but an uncaught error outside that lifecycle would otherwise silently
+// crash the process (and every in-flight request for every user) with no
+// log line explaining why. Exit so the platform restarts a clean instance.
+process.on('uncaughtException', (err) => {
+  console.error('uncaughtException — exiting', err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('unhandledRejection — exiting', reason);
+  process.exit(1);
+});
+
 bootstrap();

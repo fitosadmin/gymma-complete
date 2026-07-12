@@ -31,10 +31,26 @@ const String kReviewsBaseUrl = String.fromEnvironment('REVIEWS_BASE_URL',
 
 /// Gymma broadcast messaging backend (gym-wide announcements).
 /// To test locally: flutter run --dart-define=BROADCAST_BASE_URL=http://<YOUR_LAN_IP>:3002/api/v1
-const String _fallbackBroadcastBaseUrl = 'https://broadcast-api.onrender.com/api/v1';
+const String _fallbackBroadcastBaseUrl = 'https://broadcast-api-531n.onrender.com/api/v1';
 
 const String kBroadcastBaseUrl = String.fromEnvironment('BROADCAST_BASE_URL',
     defaultValue: _fallbackBroadcastBaseUrl);
+
+/// Origin (scheme + host, no path) that broadcast-api's Socket.io server
+/// lives on — derived from [kBroadcastBaseUrl] by dropping the `/api/v1`
+/// suffix, since REST and WebSocket are served from the same host/port.
+String get kBroadcastSocketOrigin {
+  final uri = Uri.parse(kBroadcastBaseUrl);
+  return Uri(scheme: uri.scheme, host: uri.host, port: uri.hasPort ? uri.port : null).toString();
+}
+
+/// Gymma diet suggestion backend (BMR/TDEE/macro calculator), deployed on
+/// Render. To test locally against `npm run dev`:
+///   flutter run --dart-define=DIET_BASE_URL=http://<YOUR_LAN_IP>:4000/api/v1
+const String _fallbackDietBaseUrl = 'https://diet-suggestion-cvv6.onrender.com/api/v1';
+
+const String kDietBaseUrl = String.fromEnvironment('DIET_BASE_URL',
+    defaultValue: _fallbackDietBaseUrl);
 
 /// =============================================================================
 /// Gym photos are stored in the DB as RELATIVE paths (e.g.
@@ -56,6 +72,7 @@ enum BackendTarget {
   fitos,
   reviews,
   broadcast,
+  diet,
 }
 
 /// Turns a possibly-relative image path into an absolute URL the app can load.
@@ -100,6 +117,7 @@ class ApiClient {
       BackendTarget.fitos => kFitosBaseUrl,
       BackendTarget.reviews => kReviewsBaseUrl,
       BackendTarget.broadcast => kBroadcastBaseUrl,
+      BackendTarget.diet => kDietBaseUrl,
       BackendTarget.core => kApiBaseUrl,
     };
     final base = baseUrl.endsWith('/')
@@ -156,6 +174,16 @@ class ApiClient {
   Future<dynamic> patchData(String path, Map<String, dynamic> body, {BackendTarget target = BackendTarget.core}) async {
     final uri = _uri(path, target);
     return _send(() => _http.patch(
+          uri,
+          headers: _headers(),
+          body: jsonEncode(body),
+        ), target: target);
+  }
+
+  /// PUT a JSON body → returns the unwrapped `data`.
+  Future<dynamic> putData(String path, Map<String, dynamic> body, {BackendTarget target = BackendTarget.core}) async {
+    final uri = _uri(path, target);
+    return _send(() => _http.put(
           uri,
           headers: _headers(),
           body: jsonEncode(body),

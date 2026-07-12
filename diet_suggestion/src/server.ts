@@ -21,6 +21,7 @@ async function start() {
   // Graceful shutdown
   const shutdown = async (signal: string) => {
     console.log(`\n${signal} received — shutting down gracefully…`);
+    setTimeout(() => process.exit(1), 10_000).unref(); // hard-exit guard
     server.close(async () => {
       await pool.end();
       console.log('✅  DB pool closed. Bye!');
@@ -30,6 +31,19 @@ async function start() {
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT',  () => shutdown('SIGINT'));
+
+  // Last-resort safety net — every route goes through asyncHandler, so this
+  // shouldn't fire in practice, but an uncaught error would otherwise
+  // silently crash the process (and every in-flight request for every user)
+  // with no log line explaining why.
+  process.on('uncaughtException', (err) => {
+    console.error('uncaughtException — exiting', err);
+    process.exit(1);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('unhandledRejection — exiting', reason);
+    process.exit(1);
+  });
 }
 
 start();

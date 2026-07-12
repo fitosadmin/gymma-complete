@@ -6,8 +6,14 @@ import { logger } from './logger';
 export const pool = new Pool({
   connectionString: env.DATABASE_URL,
   max: 20,
-  idleTimeoutMillis: 30_000,
+  // Neon's free-tier compute auto-suspends on inactivity; a pooled
+  // connection that outlives that suspend fails with "Connection
+  // terminated unexpectedly" on its next use. Keeping this well under
+  // Neon's suspend window makes the app proactively recycle connections
+  // before Neon has a chance to drop them out from under us.
+  idleTimeoutMillis: 10_000,
   connectionTimeoutMillis: 5_000,
+  keepAlive: true,
   ssl: isProd ? { rejectUnauthorized: false } : undefined,
 });
 

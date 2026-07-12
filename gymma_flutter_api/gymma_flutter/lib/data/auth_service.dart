@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'api_client.dart';
 
 /// Distinguishes between authenticated user types so HomeShell
@@ -67,6 +68,27 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  Future<void> _registerFcmToken() async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+      final settings = await messaging.requestPermission();
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        final token = await messaging.getToken();
+        if (token != null) {
+          final platform = defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
+          await ApiClient.instance.postData(
+            '/users/fcm-token',
+            {'token': token, 'platform': platform},
+            target: BackendTarget.broadcast,
+          );
+          debugPrint('Registered FCM token successfully');
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to register FCM token: $e');
+    }
+  }
+
   /// Standard member login.
   Future<void> login(String identifier, String password) async {
     try {
@@ -85,6 +107,7 @@ class AuthService extends ChangeNotifier {
         await prefs.setString('auth_token', _token!);
         await prefs.setString('auth_role', 'member');
         await _loadMemberGym();
+        _registerFcmToken();
       }
 
       notifyListeners();
@@ -122,6 +145,7 @@ class AuthService extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', _token!);
         await prefs.setString('auth_role', 'owner');
+        _registerFcmToken();
       }
 
       notifyListeners();
@@ -157,6 +181,7 @@ class AuthService extends ChangeNotifier {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('auth_token', _token!);
         await prefs.setString('auth_role', 'owner');
+        _registerFcmToken();
       }
 
       notifyListeners();

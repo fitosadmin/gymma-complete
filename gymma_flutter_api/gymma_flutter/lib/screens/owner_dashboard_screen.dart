@@ -57,6 +57,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
   }
 
   Future<void> _addMember() async {
+    if (_isLoading) return; // guards a double-tap firing this twice before the dialog closes
     final fullName = _addMemberNameController.text.trim();
     final phone = _addMemberPhoneController.text.trim();
     if (fullName.isEmpty || phone.isEmpty) return;
@@ -266,7 +267,7 @@ class _OwnerDashboardScreenState extends State<OwnerDashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Text(_gym!['name'] ?? 'Your Gym',
+                    Text(_gym!['name'] as String? ?? 'Your Gym',
                         style: const TextStyle(
                             fontSize: 20, fontWeight: FontWeight.w800)),
                     const SizedBox(width: 8),

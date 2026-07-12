@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../data/auth_service.dart';
 import '../data/broadcast_repository.dart';
+import '../data/broadcast_socket_service.dart';
 import '../theme.dart';
 
 /// The member-side feed for gym broadcasts (owner announcements/alerts/
@@ -21,6 +23,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String? _error;
   List<Map<String, dynamic>> _broadcasts = [];
   bool _anyMarkedRead = false;
+  StreamSubscription<Map<String, dynamic>>? _socketSub;
 
   String? get _gymId => AuthService.instance.gymId;
 
@@ -28,6 +31,40 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   void initState() {
     super.initState();
     _load();
+    BroadcastSocketService.instance.connect();
+    _socketSub = BroadcastSocketService.instance.onBroadcast.listen(_onLiveBroadcast);
+  }
+
+  @override
+  void dispose() {
+    _socketSub?.cancel();
+    BroadcastSocketService.instance.disconnect();
+    super.dispose();
+  }
+
+  /// A broadcast just arrived over the WebSocket while this screen is open —
+  /// prepend it so it shows up without waiting for the next pull-to-refresh.
+  /// The live payload uses `broadcast_id` (REST list items use `id`), and
+  /// has no `is_read`/`sender_name` yet since no receipt exists for this
+  /// user at emit time.
+  void _onLiveBroadcast(Map<String, dynamic> payload) {
+    if (!mounted) return;
+    final gymId = _gymId;
+    if (gymId != null && payload['gym_id'] != gymId) return;
+    if (_broadcasts.any((b) => b['id'] == payload['broadcast_id'])) return;
+    setState(() {
+      _broadcasts.insert(0, {
+        'id': payload['broadcast_id'],
+        'gym_id': payload['gym_id'],
+        'sender_id': payload['sender_id'],
+        'title': payload['title'],
+        'message': payload['message'],
+        'type': payload['type'],
+        'priority': payload['priority'],
+        'is_read': false,
+        'sent_at': payload['sent_at'],
+      });
+    });
   }
 
   Future<void> _load() async {

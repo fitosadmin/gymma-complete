@@ -1,0 +1,1265 @@
+================================================================================
+                    FITOS — DOCUMENT 4
+        FULL-STACK TECHNICAL IMPLEMENTATION SPECIFICATION
+              Flutter Frontend & Backend API | Production Architecture
+================================================================================
+
+DOCUMENT PURPOSE
+----------------
+This document provides exhaustive, error-free implementation instructions for
+building the FITOS mobile application (Flutter) and its supporting backend API.
+It bridges the User Assessment (Document 1), Exercise Taxonomy (Document 2),
+and Recommendation Engine (Document 3) into a deployable, scalable system.
+
+Every widget, API endpoint, data model, and business logic function is
+specified to ensure deterministic behavior across platforms.
+
+================================================================================
+
+1. SYSTEM ARCHITECTURE OVERVIEW
+--------------------------------
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                              CLIENT LAYER                                    │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │
+│  │   iOS App    │  │  Android App │  │   iPad App   │  │   Web (PWA)  │   │
+│  │   (Flutter)  │  │   (Flutter)  │  │   (Flutter)  │  │   (Flutter)  │   │
+│  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘   │
+│         └─────────────────┴─────────────────┴─────────────────┘             │
+│                              Flutter Client                                  │
+│                    (State: Riverpod | HTTP: Dio | Cache: Hive)                │
+└─────────────────────────────────────┬───────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           API GATEWAY LAYER                                  │
+│                         (AWS API Gateway / Nginx)                            │
+│                    Auth: JWT (RS256) | Rate Limit: 100 req/min               │
+└─────────────────────────────────────┬───────────────────────────────────────┘
+                                      │
+                                      ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          BACKEND SERVICE LAYER                               │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                    FITOS API Server (Node.js 20 / NestJS)              │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌─────────────┐ │  │
+│  │  │   Auth       │ │ Assessment   │ │  Exercise    │ │ Recommendation│ │  │
+│  │  │   Module     │ │   Module     │ │   Module     │ │   Engine      │ │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘ └─────────────┘ │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                      │                                       │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │              Business Logic Layer (Document 3 Formulas)                │  │
+│  │  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌─────────────┐ │  │
+│  │  │   Vector     │ │   Scoring    │ │   Workout    │ │Progression  │ │  │
+│  │  │  Computation │ │   Engine     │ │  Generator   │ │   Logic     │ │  │
+│  │  └──────────────┘ └──────────────┘ └──────────────┘ └─────────────┘ │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────┬───────────────────────────────────────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    ▼                 ▼                 ▼
+┌──────────────────────┐ ┌──────────────────────┐ ┌──────────────────────┐
+│    PostgreSQL 16     │ │     Redis 7 Cluster  │ │    S3 / CloudFront   │
+│  (Primary Database)  │ │  (Cache + Sessions)  │ │  (Videos + Images)   │
+│  ├─ users            │ │  ├─ JWT blacklist    │ │                      │
+│  ├─ assessments      │ │  ├─ Plan cache       │ │                      │
+│  ├─ exercises        │ │  ├─ Rate limiter     │ │                      │
+│  ├─ gym_databases    │ │  └─ Pub/Sub          │ │                      │
+│  ├─ workout_plans    │ │                      │ │                      │
+│  └─ performance_logs│ │                      │ │                      │
+└──────────────────────┘ └──────────────────────┘ └──────────────────────┘
+
+================================================================================
+
+2. FLUTTER FRONTEND SPECIFICATION
+----------------------------------
+
+2.1 PROJECT STRUCTURE (Feature-First Architecture)
+-------------------------------------------------
+lib/
+├── main.dart
+├── app.dart                          # MaterialApp + Router
+├── config/
+│   ├── theme.dart                    # FITOS Design System
+│   ├── constants.dart                # API endpoints, timeouts
+│   └── routes.dart                   # GoRouter configuration
+├── core/
+│   ├── errors/                       # Failure classes, Exception handlers
+│   ├── network/                      # Dio interceptors, connectivity monitor
+│   ├── utils/                        # Validators, formatters, extensions
+│   └── widgets/                      # Shared UI components (FButton, FCard)
+├── features/
+│   ├── auth/                         # Firebase Auth / JWT
+│   ├── assessment/                   # Document 1 implementation
+│   ├── exercise_library/             # Document 2 browsing
+│   ├── workout_plan/                 # Document 3 output display
+│   └── tracking/                     # Progress logging
+└── providers/
+    ├── auth_provider.dart
+    └── assessment_provider.dart
+
+2.2 STATE MANAGEMENT: RIVERPOD (Mandatory)
+------------------------------------------
+Every feature uses Riverpod for unidirectional data flow.
+
+PATTERN:
+- @riverpod async functions for API calls
+- StateNotifier for complex form state (Assessment)
+- FutureProvider for read-only data (Exercise library)
+
+EXAMPLE ASSESSMENT STATE:
+```dart
+@freezed
+class AssessmentState with _$AssessmentState {
+  const factory AssessmentState({
+    @Default({}) Map<String, dynamic> responses,
+    @Default(0) int currentSectionIndex,
+    @Default(false) bool isSubmitting,
+    UserFitnessProfileVector? computedVector,
+    Failure? error,
+  }) = _AssessmentState;
+}
+
+@riverpod
+class AssessmentController extends _$AssessmentController {
+  @override
+  AssessmentState build() => const AssessmentState();
+
+  void updateResponse(String fieldId, dynamic value) {
+    state = state.copyWith(
+      responses: {...state.responses, fieldId: value},
+    );
+    _reevaluateBranching();
+  }
+
+  void _reevaluateBranching() {
+    // Document 1: Dynamic form behavior
+    final expScore = _computeExperienceScore(state.responses);
+    if (expScore < 20) {
+      state = state.copyWith(
+        hiddenSections: {'S7', 'S8'},
+        forcedSplit: SplitType.fullBody,
+      );
+    }
+  }
+}
+```
+
+2.3 ASSESSMENT UI IMPLEMENTATION (Document 1 Mapping)
+------------------------------------------------------
+
+SECTION 0: SAFETY SCREENING
+WIDGET: `SafetyScreen` (StatefulWidget)
+- UI: Toggle switches for PAR-Q+ questions (S0_Q1–S0_Q7)
+- VALIDATION: All fields required before proceeding
+- BRANCHING LOGIC:
+  ```dart
+  if (responses['S0_Q2'] == true || responses['S0_Q3'] == true) {
+    // Show MedicalClearanceModal (blocking)
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => MedicalClearanceModal(
+        onProceedToMobilityOnly: () => _routeToMobilityTrack(),
+        onGoBack: () => _clearAndStay(),
+      ),
+    );
+  }
+  ```
+- DATA TYPE ENFORCEMENT: Boolean only. No nulls accepted.
+
+SECTION 1: IDENTITY & BODY
+WIDGET: `IdentityBodyScreen`
+- S1_AGE: `FNumberInput` (min: 15, max: 90, integer only)
+- S1_SEX: `FSegmentedControl<String>` (values: ['M','F','Other'])
+- S1_HEIGHT: `FHeightPicker` (cm or ft/in toggle with conversion)
+- S1_WEIGHT: `FWeightPicker` (kg or lbs)
+- S1_BODYFAT: `FSlider` (3–60, optional, show percentage label)
+- S1_BODY_COMP_GOAL: `FSelectableCards` (5 options, single select)
+
+SECTION 2: RECOVERY CAPACITY
+WIDGET: `RecoveryCapacityScreen`
+- S2_SLEEP: `FSlider` (3.0–12.0, step: 0.5, label: "7.5 hours")
+- S2_SLEEP_QUALITY: `FStarRating` (1–5 stars)
+- S2_STRESS: `FSelectableCards` (Low/Med/High with color coding)
+- S2_OCCUPATION: `FSelectableCards` (Sedentary/Light/Active/Very Active)
+- S2_ALCOHOL: `FStepper` (0–21, label: "drinks/week")
+- S2_NUTRITION: `FSelectableCards` (4 tiers)
+
+REAL-TIME COMPUTATION:
+```dart
+double computeRecoveryCapacity(Map<String, dynamic> r) {
+  final sleep = (r['S2_SLEEP'] as double) * (r['S2_SLEEP_QUALITY'] as int) * 4;
+  final occupation = _occupationMap[r['S2_OCCUPATION']]! * 15;
+  final stress = (4 - _stressMap[r['S2_STRESS']]!) * 20;
+  final nutrition = _nutritionMap[r['S2_NUTRITION']]! * 25;
+  final alcohol = max(0, 21 - (r['S2_ALCOHOL'] as int)) * 1.5;
+  final raw = sleep + occupation + stress + nutrition + alcohol;
+  return ((raw / 491.5) * 100).clamp(0.0, 100.0);
+}
+```
+
+SECTION 3: TRAINING HISTORY
+WIDGET: `TrainingHistoryScreen`
+- S3_DURATION: `FSelectableCards` (6 options with point values)
+- S3_COMPOUNDS: `FChecklist` (5 lifts, each +10 points)
+- S3_PROGRAM: `FToggle` (Boolean)
+- S3_FREQUENCY: `FSlider` (0–21, label: "days/week")
+- S3_1RM_AWARE: Conditional visibility based on Experience Score >= 20
+  ```dart
+  Visibility(
+    visible: experienceScore >= 20,
+    child: Column(
+      children: [
+        FToggle(id: 'S3_1RM_AWARE'),
+        if (responses['S3_1RM_AWARE'] == true) ...[
+          FNumberInput(id: 'S3_SQUAT_1RM', label: 'Squat 1RM (kg)'),
+          FNumberInput(id: 'S3_DEADLIFT_1RM', label: 'Deadlift 1RM (kg)'),
+          FNumberInput(id: 'S3_BENCH_1RM', label: 'Bench 1RM (kg)'),
+        ],
+      ],
+    ),
+  )
+  ```
+
+SECTION 4: GOAL SPECIFICATION
+WIDGET: `GoalSpecificationScreen`
+- S4_PRIMARY: `FSelectableCards` (6 goals, single select)
+- S4_SECONDARY: `FSelectableCards` (6 goals + "None", single select)
+  - VALIDATION: If secondary == primary, show error "Select a different secondary goal"
+- S4_TIMELINE: `FSegmentedControl` (4/8/12/16/20+ weeks)
+- S4_TARGET_AREAS: `FBodyMap` (interactive SVG, multi-select regions)
+
+SECTION 5: AVAILABILITY
+WIDGET: `AvailabilityScreen`
+- S5_DAYS: `FStepper` (1–7)
+- S5_TIME: `FSlider` (15–120, step: 5, label: "minutes")
+- S5_GYM_TYPE: `FSelectableCards` (Home/Commercial/Outdoor)
+- S5_SCHEDULE: `FDayPicker` (Mon–Sun, multi-select, optional)
+
+SECTION 6: INJURY & MEDICAL HISTORY
+WIDGET: `InjuryScreen`
+- S6_CURRENT_INJURY: `FToggle`
+- S6_INJURY_LIST: Conditional `FBodyMap` (multi-select, 8 regions)
+- S6_PAIN_SCALE: Conditional `FSlider` (0–10, show color gradient)
+- S6_PAST_SURGERY: `FToggle`
+- S6_PHYSIO: `FToggle`
+
+SECTION 7: MOBILITY SCREEN (Conditional: Experience >= 20)
+WIDGET: `MobilityScreen`
+- S7_SQUAT_DEPTH: `FSelectableCards` (Yes/No/Only with raised heels)
+- S7_OVERHEAD: `FSelectableCards` (Yes/No/Partial)
+- S7_HINGE: `FSelectableCards` (Yes/No/Almost)
+- S7_LUNGE: `FSelectableCards` (Yes/No/Unstable)
+- S7_ROTARY: `FSelectableCards` (Yes/No/Limited)
+
+SECTION 8: PREFERENCES (Conditional: Experience >= 35)
+WIDGET: `PreferencesScreen`
+- S8_STYLE: `FSelectableCards` (Free Weights/Machines/Calisthenics/Mixed)
+- S8_SPLIT: `FSelectableCards` (filtered by experience score matrix)
+- S8_CARDIO: `FSlider` (None/Low/Moderate/High)
+- S8_DISLIKES: `FSearchableMultiSelect` (fetch from gym database API)
+- S8_RPE: `FSegmentedControl` (RPE/%1RM/Neither)
+
+2.4 DYNAMIC FORM NAVIGATION
+---------------------------
+Use GoRouter with state guards.
+
+```dart
+final router = GoRouter(
+  routes: [
+    GoRoute(
+      path: '/assessment/:sectionId',
+      builder: (context, state) {
+        final sectionId = state.pathParameters['sectionId']!;
+        final assessment = ref.watch(assessmentControllerProvider);
+
+        // Guard: Cannot skip ahead
+        final allowedIndex = _getMaxAllowedIndex(assessment);
+        final requestedIndex = _sectionIndexMap[sectionId]!;
+
+        if (requestedIndex > allowedIndex) {
+          return const RedirectScreen(to: '/assessment/S0');
+        }
+
+        // Guard: Section 7/8 visibility
+        if ((sectionId == 'S7' && assessment.hiddenSections.contains('S7')) ||
+            (sectionId == 'S8' && assessment.hiddenSections.contains('S8'))) {
+          return const RedirectScreen(to: '/assessment/S4');
+        }
+
+        return AssessmentSectionScreen(sectionId: sectionId);
+      },
+    ),
+  ],
+);
+```
+
+2.5 EXERCISE LIBRARY UI (Document 2)
+------------------------------------
+WIDGET: `ExerciseDetailScreen`
+- Display all 5 taxonomy dimensions
+- Show difficulty badge with color (Tier 1: Green, Tier 4: Red)
+- Contraindication warnings with icons
+- Progression/regression chain as horizontal scrollable cards
+
+WIDGET: `ExerciseFilterSheet`
+- Bottom sheet with 5 filter sections (Pattern, Muscle, Equipment, Difficulty, Joint)
+- Real-time result count update
+- Uses `exerciseSearchProvider` (debounced 300ms)
+
+2.6 WORKOUT PLAN DISPLAY (Document 3 Output)
+--------------------------------------------
+WIDGET: `WorkoutPlanScreen`
+- Tab bar: Day 1, Day 2, ..., Overview
+- Each day: `SessionCard` with collapsible sections:
+  - Warm-up (5–10 min)
+  - Primary Compound (1–2 exercises)
+  - Secondary/Accessory (2–3 exercises)
+  - Isolation/Prehab (2–3 exercises)
+  - Conditioning (optional)
+
+EXERCISE CARD:
+```dart
+class ExerciseCard extends StatelessWidget {
+  final ExerciseAssignment assignment;
+
+  @override
+  Widget build(BuildContext context) {
+    return FCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(assignment.exerciseName, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              _Badge('${assignment.sets} sets', Colors.blue),
+              _Badge('${assignment.reps} reps', Colors.green),
+              _Badge('${assignment.rest}s rest', Colors.orange),
+              if (assignment.rpe != null) _Badge('RPE ${assignment.rpe}', Colors.purple),
+            ],
+          ),
+          if (assignment.notes != null) ...[
+            const SizedBox(height: 8),
+            Text(assignment.notes!, style: TextStyle(color: Colors.grey[600])),
+          ],
+        ],
+      ),
+    );
+  }
+}
+```
+
+2.7 OFFLINE SUPPORT & SYNC
+--------------------------
+- Hive boxes: `assessment_draft`, `workout_plan_cache`, `exercise_library_cache`
+- Sync strategy: Assessment responses saved to Hive every field change
+- On submit: Check connectivity. If offline, queue with WorkManager background task
+- Plan cache: TTL 7 days, refresh on pull-to-refresh
+
+================================================================================
+
+3. BACKEND API SPECIFICATION
+-----------------------------
+
+3.1 TECH STACK
+--------------
+- Runtime: Node.js 20 LTS
+- Framework: NestJS 10.x
+- ORM: Prisma 5.x (PostgreSQL)
+- Cache: Redis 7 (ioredis)
+- Validation: Zod (runtime) + Prisma (DB level)
+- Auth: Passport.js + JWT (RS256)
+- Documentation: OpenAPI 3.0 (Swagger)
+
+3.2 DATABASE SCHEMA (Prisma Implementation of Document 2)
+---------------------------------------------------------
+```prisma
+// ============================================
+// CORE ENUMS
+// ============================================
+enum MovementPattern {
+  PUSH_HORZ PUSH_VERT PULL_HORZ PULL_VERT SQUAT HINGE LUNGE CARRY ROTATION CORE_ANTI ISOLATION
+}
+
+enum JointComplexity {
+  compound isolation
+}
+
+enum PlaneOfMotion {
+  sagittal frontal transverse multi
+}
+
+enum Severity {
+  absolute relative caution
+}
+
+enum Goal {
+  Strength Hypertrophy Endurance Power General_Health Recomposition
+}
+
+enum EquipmentCode {
+  BB DB KB MACHINE CABLE BW BAND TRX SM MEDBALL
+}
+
+// ============================================
+// CORE TABLES
+// ============================================
+model Exercise {
+  id                    String   @id @default(uuid())
+  code                  String   @unique
+  name                  String
+  displayName           String   @map("display_name")
+  description           String?
+  primaryPattern        MovementPattern @map("primary_pattern")
+  jointComplexity       JointComplexity @map("joint_complexity")
+  planeOfMotion         PlaneOfMotion   @map("plane_of_motion")
+  difficultyScore       Int      @map("difficulty_score")
+  stabilityDemand       Int      @map("stability_demand")
+  coordinationComplexity  Int      @map("coordination_complexity")
+  mobilityRequired      Int      @map("mobility_required")
+  injuryRiskFactor      Int      @map("injury_risk_factor")
+  goalStrength          Int      @map("goal_strength")
+  goalHypertrophy       Int      @map("goal_hypertrophy")
+  goalEndurance         Int      @map("goal_endurance")
+  goalPower             Int      @map("goal_power")
+  experienceMinimum     Int      @map("experience_minimum")
+  videoUrl              String?  @map("video_url")
+  imageUrl              String?  @map("image_url")
+  version               Int      @default(1)
+  metadata              Json?
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  muscles               ExerciseMuscle[]
+  equipment             ExerciseEquipment[]
+  contraindications     ExerciseContraindication[]
+  progressionsFrom      ExerciseProgression[] @relation("ProgressionFrom")
+  progressionsTo        ExerciseProgression[] @relation("ProgressionTo")
+  gymAvailabilities     GymExerciseDatabase[]
+
+  @@map("exercises")
+}
+
+model Muscle {
+  id        String @id @default(uuid())
+  name      String
+  isMajor   Boolean @map("is_major")
+  parentId  String? @map("parent_id")
+  parent    Muscle? @relation("MuscleHierarchy", fields: [parentId], references: [id])
+  children  Muscle[] @relation("MuscleHierarchy")
+  exercises ExerciseMuscle[]
+
+  @@map("muscles")
+}
+
+model ExerciseMuscle {
+  exerciseId String   @map("exercise_id")
+  muscleId   String   @map("muscle_id")
+  role       String   // primary, secondary, tertiary, stabilizer
+
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  muscle     Muscle   @relation(fields: [muscleId], references: [id], onDelete: Cascade)
+
+  @@id([exerciseId, muscleId])
+  @@map("exercise_muscles")
+}
+
+model Equipment {
+  id        String @id @default(uuid())
+  code      EquipmentCode @unique
+  name      String
+  category  String
+  exercises ExerciseEquipment[]
+
+  @@map("equipment")
+}
+
+model ExerciseEquipment {
+  exerciseId String @map("exercise_id")
+  equipmentId String @map("equipment_id")
+  isPrimary  Boolean @default(false) @map("is_primary")
+
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  equipment  Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@id([exerciseId, equipmentId])
+  @@map("exercise_equipment")
+}
+
+model Contraindication {
+  id          String @id @default(uuid())
+  flag        String @unique // SHOULDER_IMPINGEMENT, LOW_BACK_PAIN, etc.
+  description String
+  exercises   ExerciseContraindication[]
+
+  @@map("contraindications")
+}
+
+model ExerciseContraindication {
+  exerciseId         String @map("exercise_id")
+  contraindicationId String @map("contraindication_id")
+  severity           Severity
+
+  exercise           Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  contraindication   Contraindication @relation(fields: [contraindicationId], references: [id], onDelete: Cascade)
+
+  @@id([exerciseId, contraindicationId])
+  @@map("exercise_contraindications")
+}
+
+model ExerciseProgression {
+  fromExerciseId String @map("from_exercise_id")
+  toExerciseId   String @map("to_exercise_id")
+  progressionType String @map("progression_type") // load, stability, complexity, range_of_motion
+
+  fromExercise Exercise @relation("ProgressionFrom", fields: [fromExerciseId], references: [id], onDelete: Cascade)
+  toExercise   Exercise @relation("ProgressionTo", fields: [toExerciseId], references: [id], onDelete: Cascade)
+
+  @@id([fromExerciseId, toExerciseId])
+  @@map("exercise_progressions")
+}
+
+model GymExerciseDatabase {
+  gymId       String @map("gym_id")
+  exerciseId  String @map("exercise_id")
+  isAvailable Boolean @default(true) @map("is_available")
+  customNotes String? @map("custom_notes")
+
+  exercise    Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@id([gymId, exerciseId])
+  @@map("gym_exercise_database")
+}
+
+// ============================================
+// USER & ASSESSMENT TABLES
+// ============================================
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  gymId         String?  @map("gym_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  assessments   Assessment[]
+  workoutPlans  WorkoutPlan[]
+  performanceLogs PerformanceLog[]
+
+  @@map("users")
+}
+
+model Assessment {
+  id              String   @id @default(uuid())
+  userId          String   @map("user_id")
+  responses       Json     // Raw form responses (Document 1 fields)
+  computedVector  Json     @map("computed_vector") // U = [G,R,M,S,E,A,I,P]
+  experienceScore Int      @map("experience_score")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user            User     @relation(fields: [userId], references: [id])
+  workoutPlan     WorkoutPlan?
+
+  @@map("assessments")
+}
+
+model WorkoutPlan {
+  id                String   @id @default(uuid())
+  assessmentId      String   @unique @map("assessment_id")
+  userId            String   @map("user_id")
+  metadata          Json     // {version, generated_at, plan_id}
+  programParameters Json     @map("program_parameters") // F, V, Intensity, Split
+  sessions          Json     // Array of Session objects
+  progressionRules  Json     @map("progression_rules")
+  safetyFlags       Json     @map("safety_flags")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  assessment        Assessment @relation(fields: [assessmentId], references: [id])
+  user              User @relation(fields: [userId], references: [id])
+
+  @@map("workout_plans")
+}
+
+model PerformanceLog {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  exerciseId  String   @map("exercise_id")
+  planId      String   @map("plan_id")
+  sessionDate DateTime @map("session_date")
+  sets        Json     // [{reps, load, rpe, completed}]
+  notes       String?
+
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@map("performance_logs")
+}
+```
+
+3.3 API ENDPOINTS
+-----------------
+
+AUTHENTICATION
+POST   /api/v1/auth/register
+POST   /api/v1/auth/login
+POST   /api/v1/auth/refresh
+POST   /api/v1/auth/logout
+
+ASSESSMENT
+POST   /api/v1/assessments              // Submit full assessment
+GET    /api/v1/assessments/:id          // Retrieve assessment + vector
+POST   /api/v1/assessments/:id/vector   // Recalculate vector (if responses edited)
+
+EXERCISE LIBRARY
+GET    /api/v1/exercises                // Paginated, filtered
+GET    /api/v1/exercises/:id            // Full exercise profile
+GET    /api/v1/exercises/search         // Full-text search
+GET    /api/v1/gyms/:gymId/exercises    // Gym-filtered list
+
+WORKOUT PLANS
+POST   /api/v1/plans/generate           // Trigger recommendation engine
+GET    /api/v1/plans/:id                // Retrieve generated plan
+PUT    /api/v1/plans/:id/regenerate     // Force regeneration with new params
+POST   /api/v1/plans/:id/feedback       // User feedback on plan
+
+TRACKING
+POST   /api/v1/tracking/log             // Log workout performance
+GET    /api/v1/tracking/progress        // Progress charts data
+GET    /api/v1/tracking/plateau-check   // Document 3 Section 6.3 detection
+
+3.4 REQUEST/RESPONSE DTOs (Zod Schemas)
+----------------------------------------
+
+ASSESSMENT SUBMISSION:
+```typescript
+const AssessmentSubmissionSchema = z.object({
+  userId: z.string().uuid(),
+  responses: z.object({
+    S0_Q1: z.boolean(),
+    S0_Q2: z.boolean(),
+    S0_Q3: z.boolean(),
+    S0_Q4: z.boolean(),
+    S0_Q5: z.boolean(),
+    S0_Q6: z.boolean().optional(),
+    S0_Q7: z.boolean(),
+    S1_AGE: z.number().int().min(15).max(90),
+    S1_SEX: z.enum(['M', 'F', 'Other']),
+    S1_HEIGHT: z.number().positive(),
+    S1_WEIGHT: z.number().positive(),
+    S1_BODYFAT: z.number().min(3).max(60).optional(),
+    S1_BODY_COMP_GOAL: z.enum(['Lose fat', 'Build muscle', 'Recomposition', 'Maintain', 'Performance']),
+    S2_SLEEP: z.number().min(3).max(12),
+    S2_SLEEP_QUALITY: z.number().int().min(1).max(5),
+    S2_STRESS: z.enum(['Low', 'Med', 'High']),
+    S2_OCCUPATION: z.enum(['Sedentary', 'Light', 'Active', 'Very_Active']),
+    S2_ALCOHOL: z.number().int().min(0).max(21).optional(),
+    S2_NUTRITION: z.enum(['Poor', 'Inconsistent', 'Consistent', 'Strict']),
+    S3_DURATION: z.enum(['Never', '<6mo', '6-12mo', '1-2yr', '2-5yr', '5+yr']),
+    S3_COMPOUNDS: z.array(z.enum(['Squat', 'Deadlift', 'Bench Press', 'Overhead Press', 'Pull-up'])),
+    S3_PROGRAM: z.boolean(),
+    S3_FREQUENCY: z.number().int().min(0).max(21),
+    S3_1RM_AWARE: z.boolean().optional(),
+    S3_SQUAT_1RM: z.number().positive().optional(),
+    S3_DEADLIFT_1RM: z.number().positive().optional(),
+    S3_BENCH_1RM: z.number().positive().optional(),
+    S4_PRIMARY: z.enum(['Strength', 'Hypertrophy', 'Endurance', 'Power', 'General_Health', 'Recomposition']),
+    S4_SECONDARY: z.enum(['Strength', 'Hypertrophy', 'Endurance', 'Power', 'General_Health', 'Recomposition']).optional(),
+    S4_TIMELINE: z.enum(['4', '8', '12', '16', '20+']),
+    S4_TARGET_AREAS: z.array(z.string()).optional(),
+    S5_DAYS: z.number().int().min(1).max(7),
+    S5_TIME: z.number().int().min(15).max(120),
+    S5_GYM_TYPE: z.enum(['Home', 'Commercial', 'Outdoor']),
+    S5_SCHEDULE: z.array(z.enum(['Mon','Tue','Wed','Thu','Fri','Sat','Sun'])).optional(),
+    S6_CURRENT_INJURY: z.boolean(),
+    S6_INJURY_LIST: z.array(z.string()).optional(),
+    S6_PAIN_SCALE: z.number().int().min(0).max(10).optional(),
+    S6_PAST_SURGERY: z.boolean(),
+    S6_PHYSIO: z.boolean(),
+    S7_SQUAT_DEPTH: z.enum(['Yes', 'No', 'Only with raised heels']).optional(),
+    S7_OVERHEAD: z.enum(['Yes', 'No', 'Partial']).optional(),
+    S7_HINGE: z.enum(['Yes', 'No', 'Almost']).optional(),
+    S7_LUNGE: z.enum(['Yes', 'No', 'Unstable']).optional(),
+    S7_ROTARY: z.enum(['Yes', 'No', 'Limited']).optional(),
+    S8_STYLE: z.enum(['Free Weights', 'Machines', 'Calisthenics', 'Mixed']).optional(),
+    S8_SPLIT: z.enum(['Full Body', 'Upper/Lower', 'Push/Pull/Legs', 'Bro Split', 'Specialized', 'Custom']).optional(),
+    S8_CARDIO: z.enum(['None', 'Low', 'Moderate', 'High']).optional(),
+    S8_DISLIKES: z.array(z.string()).optional(),
+    S8_RPE: z.enum(['RPE', '%1RM', 'Neither']).optional(),
+  }),
+});
+```
+
+USER FITNESS PROFILE VECTOR (Response):
+```typescript
+const UserFitnessProfileVectorSchema = z.object({
+  Goal_Alignment: z.number().min(0).max(100),
+  Recovery_Capacity: z.number().min(0).max(100),
+  Mobility_Score: z.number().min(0).max(100),
+  Strength_Level: z.number().min(0).max(100),
+  Experience_Score: z.number().min(0).max(100),
+  Availability_Score: z.number().min(0).max(100),
+  Injury_Risk: z.number().min(0).max(100),
+  Preference_Alignment: z.number().min(0).max(100),
+});
+```
+
+WORKOUT PLAN RESPONSE:
+```typescript
+const WorkoutPlanResponseSchema = z.object({
+  planId: z.string().uuid(),
+  metadata: z.object({
+    version: z.string(),
+    generatedAt: z.string().datetime(),
+    userId: z.string().uuid(),
+  }),
+  programParameters: z.object({
+    frequency: z.number().int(),
+    split: z.string(),
+    volume: z.number(),
+    intensityModel: z.string(),
+    periodizationModel: z.string(),
+  }),
+  sessions: z.array(z.object({
+    dayNumber: z.number().int(),
+    focus: z.string(),
+    durationMinutes: z.number().int(),
+    exercises: z.array(z.object({
+      exerciseId: z.string(),
+      name: z.string(),
+      category: z.enum(['warmup', 'primary', 'secondary', 'isolation', 'conditioning']),
+      sets: z.number().int(),
+      reps: z.union([z.number().int(), z.string()]), // "8-12" or 15
+      restSeconds: z.number().int(),
+      rpe: z.number().optional(),
+      intensityPercent1RM: z.number().optional(),
+      notes: z.string().optional(),
+      alternatives: z.array(z.string()).optional(),
+    })),
+  })),
+  progressionRules: z.object({
+    model: z.enum(['double_progression', 'linear', 'dup', 'block']),
+    instructions: z.string(),
+  }),
+  safetyFlags: z.array(z.string()),
+});
+```
+
+3.5 RECOMMENDATION ENGINE SERVICE (Document 3 Implementation)
+------------------------------------------------------------
+```typescript
+@Injectable()
+export class RecommendationEngineService {
+  constructor(
+    private prisma: PrismaService,
+    private exerciseMatcher: ExerciseMatcherService,
+  ) {}
+
+  async generatePlan(assessmentId: string): Promise<WorkoutPlan> {
+    // STEP 1: INGEST USER VECTOR U
+    const assessment = await this.prisma.assessment.findUnique({
+      where: { id: assessmentId },
+    });
+    const U = assessment.computedVector as UserFitnessProfileVector;
+
+    // STEP 2: LOAD GYM EXERCISE DATABASE
+    const gymExercises = await this.prisma.gymExerciseDatabase.findMany({
+      where: { gymId: assessment.user.gymId, isAvailable: true },
+      include: { exercise: true },
+    });
+
+    // STEP 3: APPLY HARD FILTERS
+    const candidates = gymExercises.filter(({ exercise }) => {
+      if (exercise.experienceMinimum > U.Experience_Score) return false;
+      // Equipment gate handled by gym_exercise_database
+      // Blacklist gate
+      const blacklist = assessment.responses['S8_DISLIKES'] || [];
+      if (blacklist.includes(exercise.code)) return false;
+      // Contraindication gate
+      // ... (prisma query for contraindications)
+      // Mobility gate
+      if (exercise.mobilityRequired > U.Mobility_Score) return false;
+      return true;
+    }).map(ge => ge.exercise);
+
+    // STEP 4: COMPUTE MATCH SCORES
+    const scoredExercises = candidates.map(e => ({
+      exercise: e,
+      matchScore: this.exerciseMatcher.computeMatchScore(e, U, assessment.responses),
+    })).sort((a, b) => b.matchScore - a.matchScore);
+
+    // STEP 5: DETERMINE PROGRAM PARAMETERS
+    const F = this.calculateFrequency(U.Availability_Score, U.Recovery_Capacity, assessment.responses['S5_DAYS']);
+    const V = this.calculateVolume(U.Experience_Score, U.Recovery_Capacity);
+    const intensityRange = this.calculateIntensity(assessment.responses['S4_PRIMARY'], U.Experience_Score);
+    const split = this.selectSplit(F, U.Experience_Score, assessment.responses['S8_SPLIT']);
+
+    // STEP 6-7: ALLOCATE VOLUME & SELECT EXERCISES
+    const sessions = this.buildSessions(scoredExercises, F, V, split, U, assessment.responses);
+
+    // STEP 8: ASSIGN SETS, REPS, REST, RPE
+    const periodizedSessions = this.applyPeriodization(sessions, U.Experience_Score, assessment.responses);
+
+    // STEP 9: OUTPUT & STORE
+    return this.prisma.workoutPlan.create({
+      data: {
+        assessmentId,
+        userId: assessment.userId,
+        metadata: { version: '1.0.0', generatedAt: new Date().toISOString() },
+        programParameters: { frequency: F, split, volume: V, intensityModel: intensityRange },
+        sessions: periodizedSessions as any,
+        progressionRules: this.getProgressionRules(U.Experience_Score),
+        safetyFlags: this.generateSafetyFlags(U),
+      },
+    });
+  }
+
+  private computeMatchScore(
+    exercise: Exercise,
+    U: UserFitnessProfileVector,
+    responses: any,
+  ): number {
+    const Ge = this.getGoalCompatibility(exercise, responses['S4_PRIMARY'], responses['S4_SECONDARY']);
+    const difficultyFit = 100 * Math.exp(
+      -Math.pow(exercise.difficultyScore - (U.Experience_Score - 10), 2) / (2 * Math.pow(20, 2))
+    );
+    const mobilityFit = 100 - Math.abs(exercise.mobilityRequired - U.Mobility_Score);
+    const safetyMargin = 100 - exercise.injuryRiskFactor;
+    const equipmentMatch = 100; // Already filtered
+    const musclePriority = this.computeMusclePriority(exercise, responses['S4_TARGET_AREAS'] || []);
+
+    return (
+      0.30 * Ge +
+      0.25 * difficultyFit +
+      0.10 * mobilityFit +
+      0.15 * safetyMargin +
+      0.10 * equipmentMatch +
+      0.10 * musclePriority
+    );
+  }
+
+  private calculateFrequency(A: number, R: number, requestedDays: number): number {
+    const maxFreq = Math.floor((A * 7) / 100);
+    const recoveryLimit = R < 30 ? 2 : R < 50 ? 3 : R < 70 ? 4 : R < 85 ? 5 : 6;
+    return Math.min(maxFreq, recoveryLimit, requestedDays);
+  }
+
+  private calculateVolume(E: number, R: number): number {
+    let base = 10;
+    if (E >= 20 && E < 40) base = 12;
+    else if (E >= 40 && E < 60) base = 15;
+    else if (E >= 60 && E <= 80) base = 18;
+    else if (E > 80) base = 20;
+    return base * (R / 100);
+  }
+
+  private selectSplit(F: number, E: number, preferredSplit?: string): string {
+    const matrix = {
+      1: { any: 'Full Body' },
+      2: { low: 'Full Body', high: 'Upper/Lower' },
+      3: { low: 'Full Body', high: 'Push/Pull/Legs' },
+      4: { low: 'Upper/Lower', high: 'Upper/Lower' },
+      5: { low: 'Upper/Lower', high: 'Push/Pull/Legs' },
+      6: { low: 'Push/Pull/Legs', high: 'Bro Split / Custom' },
+    };
+    const expTier = E < 20 ? 'low' : E < 60 ? 'mid' : 'high';
+    // ... matrix lookup logic with preference validation
+    return 'Full Body'; // Simplified
+  }
+}
+```
+
+3.6 VECTOR COMPUTATION SERVICE (Document 1 Formulas)
+----------------------------------------------------
+```typescript
+@Injectable()
+export class VectorComputationService {
+  computeUserVector(responses: AssessmentResponses): UserFitnessProfileVector {
+    return {
+      Goal_Alignment: this.computeG(responses),
+      Recovery_Capacity: this.computeR(responses),
+      Mobility_Score: this.computeM(responses),
+      Strength_Level: this.computeS(responses),
+      Experience_Score: this.computeE(responses),
+      Availability_Score: this.computeA(responses),
+      Injury_Risk: this.computeI(responses),
+      Preference_Alignment: 50, // Computed post-matching
+    };
+  }
+
+  private computeG(r: AssessmentResponses): number {
+    const primary = r.S4_PRIMARY;
+    const secondary = r.S4_SECONDARY;
+    if (!secondary) return 100;
+
+    const penaltyMatrix: Record<string, Record<string, number>> = {
+      'Strength': { 'Hypertrophy': 0.3, 'Endurance': 0.8, 'Power': 0.1, 'General_Health': 0.2, 'Recomposition': 0.3 },
+      'Hypertrophy': { 'Strength': 0.3, 'Endurance': 0.6, 'Power': 0.4, 'General_Health': 0.2, 'Recomposition': 0.1 },
+      'Endurance': { 'Strength': 0.8, 'Hypertrophy': 0.6, 'Power': 0.7, 'General_Health': 0.3, 'Recomposition': 0.5 },
+      'Power': { 'Strength': 0.1, 'Hypertrophy': 0.4, 'Endurance': 0.7, 'General_Health': 0.3, 'Recomposition': 0.4 },
+      'General_Health': { 'Strength': 0.2, 'Hypertrophy': 0.2, 'Endurance': 0.3, 'Power': 0.3, 'Recomposition': 0.1 },
+      'Recomposition': { 'Strength': 0.3, 'Hypertrophy': 0.1, 'Endurance': 0.5, 'Power': 0.4, 'General_Health': 0.1 },
+    };
+
+    const penalty = penaltyMatrix[primary]?.[secondary] ?? 0;
+    return Math.max(0, 100 - (penalty * 15));
+  }
+
+  private computeR(r: AssessmentResponses): number {
+    const occupationMap = { 'Sedentary': 1, 'Light': 2, 'Active': 3, 'Very_Active': 4 };
+    const stressMap = { 'Low': 1, 'Med': 2, 'High': 3 };
+    const nutritionMap = { 'Poor': 1, 'Inconsistent': 2, 'Consistent': 3, 'Strict': 4 };
+
+    const raw = (
+      (r.S2_SLEEP * r.S2_SLEEP_QUALITY * 4) +
+      (occupationMap[r.S2_OCCUPATION] * 15) +
+      ((4 - stressMap[r.S2_STRESS]) * 20) +
+      (nutritionMap[r.S2_NUTRITION] * 25) +
+      (Math.max(0, 21 - (r.S2_ALCOHOL || 0)) * 1.5)
+    );
+    return Math.min(100, (raw / 491.5) * 100);
+  }
+
+  private computeE(r: AssessmentResponses): number {
+    const durationMap = { 'Never': 0, '<6mo': 15, '6-12mo': 35, '1-2yr': 55, '2-5yr': 80, '5+yr': 100 };
+    const durationPoints = durationMap[r.S3_DURATION];
+    const compoundPoints = (r.S3_COMPOUNDS?.length || 0) * 10;
+    const programPoints = r.S3_PROGRAM ? 15 : 0;
+    const freqMap = [0, 5, 5, 10, 10, 15, 15, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20];
+    const frequencyPoints = freqMap[Math.min(r.S3_FREQUENCY, 21)] || 0;
+
+    const raw = (
+      durationPoints * 0.50 +
+      compoundPoints * 0.30 +
+      programPoints * 0.15 +
+      frequencyPoints * 0.05
+    );
+    return Math.min(100, raw);
+  }
+
+  private computeA(r: AssessmentResponses): number {
+    const gymFactor = { 'Home': 8, 'Commercial': 10, 'Outdoor': 7 };
+    const raw = (r.S5_DAYS * 12) + (r.S5_TIME * 0.5) + gymFactor[r.S5_GYM_TYPE];
+    return Math.min(100, (raw / 154) * 100);
+  }
+
+  private computeI(r: AssessmentResponses): number {
+    let base = 0;
+    if (r.S0_Q2 || r.S0_Q3) base += 30;
+    if (r.S0_Q4) base += 20;
+    if (r.S0_Q5) base += 10;
+    if (r.S6_CURRENT_INJURY) base += (r.S6_PAIN_SCALE || 0) * 5;
+    if (r.S6_PAST_SURGERY) base += 15;
+    if (r.S6_PHYSIO) base += 10;
+    return Math.min(base, 100);
+  }
+
+  private computeM(r: AssessmentResponses): number {
+    const E = this.computeE(r);
+    if (E < 20) return 50;
+
+    const squat = r.S7_SQUAT_DEPTH === 'Yes' ? 25 : r.S7_SQUAT_DEPTH === 'Only with raised heels' ? 15 : 5;
+    const overhead = r.S7_OVERHEAD === 'Yes' ? 25 : r.S7_OVERHEAD === 'Partial' ? 15 : 5;
+    const hinge = r.S7_HINGE === 'Yes' ? 20 : r.S7_HINGE === 'Almost' ? 12 : 5;
+    const lunge = r.S7_LUNGE === 'Yes' ? 20 : r.S7_LUNGE === 'Unstable' ? 10 : 5;
+    const rotary = r.S7_ROTARY === 'Yes' ? 10 : 5;
+
+    return Math.min(100, squat + overhead + hinge + lunge + rotary);
+  }
+
+  private computeS(r: AssessmentResponses): number {
+    const E = this.computeE(r);
+    if (!r.S3_1RM_AWARE || E < 20) {
+      return E * 0.8;
+    }
+
+    // Calculate relative strength ratios and compare to standards
+    const squatRatio = r.S3_SQUAT_1RM / r.S1_WEIGHT;
+    const deadliftRatio = r.S3_DEADLIFT_1RM / r.S1_WEIGHT;
+    const benchRatio = r.S3_BENCH_1RM / r.S1_WEIGHT;
+
+    // Sex-specific standards (simplified)
+    const isFemale = r.S1_SEX === 'F';
+    const squatStd = isFemale ? [0.65, 1.0, 1.3, 1.6] : [1.0, 1.5, 2.0, 2.5];
+    const deadliftStd = isFemale ? [0.8, 1.2, 1.6, 2.0] : [1.2, 1.8, 2.5, 3.0];
+    const benchStd = isFemale ? [0.4, 0.75, 1.1, 1.4] : [0.75, 1.25, 1.75, 2.25];
+
+    const getPercentile = (ratio: number, standards: number[]) => {
+      if (ratio < standards[0]) return ratio / standards[0] * 25;
+      if (ratio < standards[1]) return 25 + (ratio - standards[0]) / (standards[1] - standards[0]) * 25;
+      if (ratio < standards[2]) return 50 + (ratio - standards[1]) / (standards[2] - standards[1]) * 25;
+      if (ratio < standards[3]) return 75 + (ratio - standards[2]) / (standards[3] - standards[2]) * 25;
+      return Math.min(100, 100 + (ratio - standards[3]) / standards[3] * 25);
+    };
+
+    const avg = (getPercentile(squatRatio, squatStd) + 
+                 getPercentile(deadliftRatio, deadliftStd) + 
+                 getPercentile(benchRatio, benchStd)) / 3;
+    return Math.min(100, avg);
+  }
+}
+```
+
+3.7 EDGE CASE HANDLERS (Document 3 Section 6)
+----------------------------------------------
+```typescript
+@Injectable()
+export class EdgeCaseService {
+  handleNoExercises(candidates: Exercise[], userVector: UserFitnessProfileVector): Exercise[] {
+    // 6.1: No available exercises after filtering
+    if (candidates.length === 0) {
+      // Fallback to bodyweight
+      const bwFallback = await this.prisma.exercise.findMany({
+        where: { equipment: { some: { equipment: { code: 'BW' } } } },
+      });
+      if (bwFallback.length > 0) return bwFallback;
+
+      // Mobility-only plan
+      throw new MobilityOnlyPlanException(
+        'Your current constraints limit resistance training. Focus on movement quality.'
+      );
+    }
+    return candidates;
+  }
+
+  checkFeasibility(U: UserFitnessProfileVector, responses: any): FeasibilityResult {
+    // 6.2: Conflicting goals and availability
+    const feasibility = (U.Availability_Score * 0.4) + (U.Experience_Score * 0.3) + (U.Recovery_Capacity * 0.3);
+    if (responses.S4_PRIMARY === 'Power' && feasibility < 40) {
+      return {
+        isFeasible: false,
+        message: 'Power training requires 4-5 days/week and 60+ minutes/session.',
+        recommendations: ['Adjust goal to General Health', 'Keep goal but accept minimal progress', 'Update availability'],
+      };
+    }
+    return { isFeasible: true };
+  }
+
+  detectPlateau(logs: PerformanceLog[]): PlateauDetectionResult {
+    // 6.3: Performance stall detection
+    const grouped = _.groupBy(logs, 'exerciseId');
+    const stalledExercises = Object.entries(grouped).filter(([exId, exerciseLogs]) => {
+      if (exerciseLogs.length < 3) return false;
+      const lastThree = exerciseLogs.slice(-3);
+      // Check if load or reps increased in any of last 3 sessions
+      return !lastThree.some((log, i) => {
+        if (i === 0) return false;
+        return log.sets.some((set: any, j: number) => 
+          set.load > lastThree[i-1].sets[j]?.load || set.reps > lastThree[i-1].sets[j]?.reps
+        );
+      });
+    });
+
+    if (stalledExercises.length >= 3) {
+      return { isPlateau: true, affectedExercises: stalledExercises.map(([id]) => id) };
+    }
+    return { isPlateau: false };
+  }
+}
+```
+
+================================================================================
+
+4. INTEGRATION SPECIFICATION
+-----------------------------
+
+4.1 FLUTTER ↔ BACKEND DATA FLOW
+--------------------------------
+```
+1. User opens app → GET /api/v1/exercises?gymId=X (cached in Hive)
+2. User starts assessment → Local state (Riverpod) + Hive draft
+3. User submits assessment → POST /api/v1/assessments
+   → Backend computes vector (VectorComputationService)
+   → Returns vector immediately
+4. User requests plan → POST /api/v1/plans/generate
+   → Backend runs RecommendationEngine (3-5s)
+   → Returns plan JSON
+   → Flutter caches plan in Hive
+5. User logs workout → POST /api/v1/tracking/log (offline queue supported)
+6. App checks plateau → GET /api/v1/tracking/plateau-check (weekly)
+```
+
+4.2 REAL-TIME SYNC (WebSocket for Trainer Review)
+------------------------------------------------
+If `S6_PHYSIO = true` or `I > 60`:
+- Flutter connects to `wss://api.fitos.com/trainer-review`
+- Sends assessment ID
+- Receives notification when trainer approves/modifies plan
+
+4.3 PUSH NOTIFICATIONS
+----------------------
+- Workout reminders (based on S5_SCHEDULE)
+- Deload week reminders (week 4 of linear periodization)
+- Plateau detection alerts
+- Form check reminders (every 4 weeks for pregnancy/postpartum)
+
+================================================================================
+
+5. ERROR HANDLING & VALIDATION
+-------------------------------
+
+5.1 FLUTTER ERROR BOUNDARIES
+----------------------------
+```dart
+class AssessmentErrorBoundary extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return ErrorBoundary(
+      onError: (error, stack) {
+        // Log to Sentry
+        Sentry.captureException(error, stackTrace: stack);
+        // Show user-friendly message
+        return const ErrorScreen(
+          title: 'Something went wrong',
+          message: 'Your progress has been saved. Please restart the assessment.',
+        );
+      },
+      child: AssessmentFlow(),
+    );
+  }
+}
+```
+
+5.2 BACKEND ERROR RESPONSES
+---------------------------
+```typescript
+// Standard error format
+interface ApiError {
+  statusCode: number;
+  errorCode: string;    // e.g., "MEDICAL_CLEARANCE_REQUIRED"
+  message: string;
+  details?: Record<string, any>;
+  timestamp: string;
+}
+
+// Specific error codes
+const ERROR_CODES = {
+  MEDICAL_CLEARANCE_REQUIRED: { status: 403, message: 'Medical clearance required before exercise prescription' },
+  MOBILITY_ONLY_PLAN: { status: 200, message: 'Resistance training contraindicated. Mobility plan generated.' },
+  NO_EXERCISES_AVAILABLE: { status: 422, message: 'No exercises match current constraints' },
+  PLATEAU_DETECTED: { status: 200, message: 'Training plateau detected. Deload recommended.' },
+  FEASIBILITY_CONFLICT: { status: 400, message: 'Goal and availability conflict detected' },
+} as const;
+```
+
+5.3 VALIDATION PIPELINE
+-----------------------
+1. Zod schema validation (runtime)
+2. Prisma schema validation (database)
+3. Business logic validation (service layer)
+4. Medical safety validation (Document 1 Section 0 gates)
+
+================================================================================
+
+6. SECURITY & COMPLIANCE
+------------------------
+
+6.1 DATA PROTECTION
+-------------------
+- PHI/Medical data (S0, S6) encrypted at rest (AES-256) and in transit (TLS 1.3)
+- JWT tokens: RS256, 15-min access + 7-day refresh
+- Password hashing: Argon2id
+- Audit logging: All assessment modifications logged to `assessment_audit_log` table
+
+6.2 HIPAA CONSIDERATIONS (PAR-Q+ Medical Data)
+---------------------------------------------
+- Separate medical data into encrypted JSONB column
+- Access controls: Only user and designated trainer can view S0/S6
+- Data retention: Medical data retained 7 years (US standard), fitness data 3 years
+- Breach notification: Automated alerts on unauthorized access attempts
+
+6.3 RATE LIMITING
+-----------------
+- Assessment submission: 5/min per user
+- Plan generation: 3/hour per user
+- Exercise search: 100/min per IP
+
+================================================================================
+
+7. PERFORMANCE OPTIMIZATION
+---------------------------
+
+7.1 BACKEND
+-----------
+- Redis caching:
+  - Exercise library: 1 hour TTL
+  - Generated plans: 24 hour TTL
+  - User vectors: 1 hour TTL
+- Database indexing:
+  - `exercises(difficulty_score, experience_minimum)`
+  - `exercise_muscles(muscle_id, role)`
+  - `gym_exercise_database(gym_id, is_available)`
+- Query optimization:
+  - Exercise matching uses single query with JOINs, not N+1
+  - Materialized view for `exercise_difficulty_tiers`
+
+7.2 FLUTTER
+-----------
+- Image caching: `cached_network_image` for exercise images/videos
+- List virtualization: `ListView.builder` for exercise lists (500+ items)
+- Computation offloading: Vector computation runs in `compute()` isolate
+- Bundle size: Exercise database shipped as compressed JSON in assets for offline
+
+================================================================================
+
+8. TESTING STRATEGY
+--------------------
+
+8.1 FLUTTER TESTS
+-----------------
+- Unit: Vector computation functions (match Document 3 formulas exactly)
+- Widget: Each assessment section renders correctly with branching
+- Integration: Full assessment → plan generation flow
+- Golden: Workout plan screen pixel-perfect matches
+
+8.2 BACKEND TESTS
+-----------------
+- Unit: `VectorComputationService` (known inputs → expected vectors)
+- Unit: `RecommendationEngineService` (mock exercise DB → expected plan structure)
+- Integration: API endpoints return correct Zod-validated shapes
+- E2E: Full pipeline with test database (seeded with Document 2 exercises)
+
+8.3 REGRESSION TESTS
+--------------------
+- Matrix gap analysis query must return zero unexpected gaps
+- Difficulty score formula must match Document 2 table exactly
+- Conflict penalty matrix must match Document 3 Section 2.1 exactly
+
+================================================================================
+
+9. DEPLOYMENT CHECKLIST
+------------------------
+
+FRONTEND:
+[ ] Flutter 3.19+ with Dart 3.3
+[ ] iOS: Xcode 15, minimum iOS 13
+[ ] Android: compileSdk 34, minimum SDK 21
+[ ] Web: CanvasKit renderer, PWA manifest
+
+BACKEND:
+[ ] Node.js 20 LTS
+[ ] PostgreSQL 16 with pgvector (for future ML features)
+[ ] Redis 7 cluster
+[ ] PM2 cluster mode (4 instances minimum)
+[ ] Health check endpoint: GET /health (DB + Redis connectivity)
+
+================================================================================
+
+10. MATHEMATICAL INTEGRITY GUARANTEES
+--------------------------------------
+
+To ensure the Flutter app and backend produce IDENTICAL results to Document 3:
+
+| Formula | Backend File | Flutter File | Verification Method |
+|---------|-------------|--------------|---------------------|
+| G (Goal Alignment) | `vector.service.ts:47` | `assessment_controller.dart:112` | Unit test with all 36 matrix combinations |
+| R (Recovery) | `vector.service.ts:62` | `assessment_controller.dart:89` | Unit test with max/min inputs |
+| E (Experience) | `vector.service.ts:89` | `assessment_controller.dart:156` | Unit test: all duration tiers |
+| MATCH_SCORE | `recommendation.service.ts:78` | N/A (server-side only) | Property-based test: 1000 random vectors |
+| DIFFICULTY_FIT | `recommendation.service.ts:95` | N/A | Verify bell curve at De = E-10, E, E-30, E+20 |
+| BASE_VOLUME | `recommendation.service.ts:156` | N/A | Unit test per experience tier |
+
+================================================================================
+
+                              END OF DOCUMENT 4
+================================================================================

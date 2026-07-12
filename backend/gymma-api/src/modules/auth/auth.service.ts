@@ -60,12 +60,25 @@ export async function register(input: {
   if (existing) throw AppError.conflict('An account with this email already exists');
 
   const passwordHash = await bcrypt.hash(input.password, BCRYPT_COST);
-  const user = await repo.createUser({
-    email: input.email,
-    passwordHash,
-    fullName: input.fullName,
-    role: 'owner',
-  });
+  let user: UserRow;
+  try {
+    user = await repo.createUser({
+      email: input.email,
+      passwordHash,
+      fullName: input.fullName,
+      role: 'owner',
+    });
+  } catch (err) {
+    // Two concurrent registrations for the same email both pass the check
+    // above; the second insert hits the DB's unique constraint (code 23505)
+    // instead of the pre-check. Without this, that race surfaces as a
+    // masked 500 instead of the same clean 409 the pre-check gives everyone
+    // else.
+    if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
+      throw AppError.conflict('An account with this email already exists');
+    }
+    throw err;
+  }
 
   // fire-and-forget verification email
   const link = `${env.FRONTEND_ORIGIN}/verify-email?uid=${user.id}`;

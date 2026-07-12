@@ -27,6 +27,20 @@ async function bootstrap() {
 
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
+
+  // Last-resort safety net — every current route is asyncHandler-wrapped so
+  // this shouldn't fire in practice, but an uncaught error here would
+  // otherwise silently crash the process (and every in-flight request for
+  // every user) with no log line explaining why. Exit so Render restarts a
+  // clean instance rather than continuing in a possibly-corrupted state.
+  process.on('uncaughtException', (err) => {
+    logger.error({ err }, 'uncaughtException — exiting');
+    process.exit(1);
+  });
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ err: reason }, 'unhandledRejection — exiting');
+    process.exit(1);
+  });
 }
 
 bootstrap().catch((err) => {

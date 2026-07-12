@@ -53,6 +53,18 @@ async function bootstrap() {
 
   process.on('SIGTERM', () => void shutdown('SIGTERM'));
   process.on('SIGINT', () => void shutdown('SIGINT'));
+
+  // Last-resort safety net. BullMQ already catches exceptions thrown inside
+  // individual job processors (they're marked failed, not propagated here),
+  // so this only covers truly unexpected errors outside that sandbox.
+  process.on('uncaughtException', (err) => {
+    logger.error({ err }, 'uncaughtException — exiting');
+    process.exit(1);
+  });
+  process.on('unhandledRejection', (reason) => {
+    logger.error({ err: reason }, 'unhandledRejection — exiting');
+    process.exit(1);
+  });
 }
 
 bootstrap().catch((err) => {

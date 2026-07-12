@@ -8,6 +8,12 @@ import { errorHandler } from './middleware/errorHandler';
 
 const app = express();
 
+// Render sits behind a reverse proxy that sets X-Forwarded-For — without
+// this, express-rate-limit can't safely resolve the real client IP for
+// authLimiter (register/login are still IP-keyed) and logs a validation
+// warning on every request.
+app.set('trust proxy', 1);
+
 // ─── Security headers ─────────────────────────────────────────────────────────
 app.use(helmet());
 

@@ -189,6 +189,7 @@ class _AssessmentScreenState extends State<AssessmentScreen> {
   }
 
   Future<void> _submitAssessment() async {
+    if (_isSubmitting) return; // guards a double-tap on "Generate My Plan" firing twice
     // Pre-check: block plan if medically NOT cleared (S0_Q2 or S0_Q3 true)
     if ((_answers['S0_Q2'] as bool? ?? false) || (_answers['S0_Q3'] as bool? ?? false)) {
       final proceed = await _showMedicalBlockedDialog();
