@@ -6,7 +6,13 @@ ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'member';
 -- 2. Make email optional and phone unique since members will log in with phone
 ALTER TABLE users ALTER COLUMN email DROP NOT NULL;
 
--- 3. We use DO block to safely add unique constraint if it doesn't exist
+-- 3. Add the unique constraint idempotently. A pre-check against
+-- pg_constraint isn't enough on its own — this DB has repeatedly shown
+-- inconsistent catalog states where a constraint's backing index survives
+-- independently of its pg_constraint row (see runtime logs: the pre-check
+-- found no 'users_phone_key' constraint, but the ADD CONSTRAINT still
+-- failed with "relation users_phone_key already exists"). Catching the
+-- actual errors is the only guard that can't be fooled by that.
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -14,6 +20,8 @@ BEGIN
     ) THEN
         ALTER TABLE users ADD CONSTRAINT users_phone_key UNIQUE (phone);
     END IF;
+EXCEPTION
+    WHEN duplicate_object OR duplicate_table THEN NULL;
 END $$;
 
 -- 4. Create gym_members table
