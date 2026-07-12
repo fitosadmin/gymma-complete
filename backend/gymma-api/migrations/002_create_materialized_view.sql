@@ -1,7 +1,7 @@
 -- 002_create_materialized_view.sql
 -- Aggregated rating scores per gym.
 
-CREATE MATERIALIZED VIEW gym_rating_summary AS
+CREATE MATERIALIZED VIEW IF NOT EXISTS gym_rating_summary AS
 SELECT
   gym_id,
   ROUND(AVG(rating)::numeric, 1)         AS rating,
@@ -16,7 +16,7 @@ WHERE deleted_at IS NULL
 GROUP BY gym_id;
 
 -- Unique index is REQUIRED for REFRESH ... CONCURRENTLY
-CREATE UNIQUE INDEX idx_rating_summary_gym ON gym_rating_summary(gym_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_rating_summary_gym ON gym_rating_summary(gym_id);
 
 -- NOTE on refresh strategy:
 -- The original spec used an AFTER STATEMENT trigger calling

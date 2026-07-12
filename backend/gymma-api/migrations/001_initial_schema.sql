@@ -1,5 +1,13 @@
 -- 001_initial_schema.sql
 -- Gymma MVP schema. Requires PostGIS.
+--
+-- Every statement here is idempotent (IF NOT EXISTS / DROP+CREATE TRIGGER /
+-- exception-guarded CREATE TYPE) so this file is safe to replay in full —
+-- config/migrate.ts's desync self-heal re-runs it whenever ANY of its
+-- managed tables goes missing, even if the others survived. Without that,
+-- re-running would crash on "relation already exists" for every table/
+-- index/trigger that DIDN'T disappear, taking the whole service down
+-- instead of repairing it.
 
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS pgcrypto; -- gen_random_uuid()
@@ -18,18 +26,22 @@ $$;
 -- ===========================================================================
 -- ENUMS
 -- ===========================================================================
-CREATE TYPE amenity_type AS ENUM (
-  'Cardio', 'Weights', 'CrossFit', 'Swimming', 'Steam', 'Sauna',
-  'Shower', 'Lockers', 'AC', 'Womens_Section', 'PT',
-  'Group_Classes', 'Parking', 'WiFi', 'Cafeteria'
-);
+DO $$ BEGIN
+  CREATE TYPE amenity_type AS ENUM (
+    'Cardio', 'Weights', 'CrossFit', 'Swimming', 'Steam', 'Sauna',
+    'Shower', 'Lockers', 'AC', 'Womens_Section', 'PT',
+    'Group_Classes', 'Parking', 'WiFi', 'Cafeteria'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE user_role AS ENUM ('owner', 'admin', 'super_admin');
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM ('owner', 'admin', 'super_admin');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ===========================================================================
 -- gyms
 -- ===========================================================================
-CREATE TABLE gyms (
+CREATE TABLE IF NOT EXISTS gyms (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug             TEXT NOT NULL UNIQUE,
   name             TEXT NOT NULL,
@@ -74,37 +86,39 @@ BEGIN
 END;
 $$;
 
+DROP TRIGGER IF EXISTS trg_gyms_location ON gyms;
 CREATE TRIGGER trg_gyms_location
 BEFORE INSERT OR UPDATE OF lat, lng ON gyms
 FOR EACH ROW EXECUTE FUNCTION gyms_sync_location();
 
+DROP TRIGGER IF EXISTS trg_gyms_updated ON gyms;
 CREATE TRIGGER trg_gyms_updated
 BEFORE UPDATE ON gyms
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
-CREATE INDEX idx_gyms_city   ON gyms(city) WHERE deleted_at IS NULL;
-CREATE INDEX idx_gyms_area   ON gyms(area) WHERE deleted_at IS NULL;
-CREATE INDEX idx_gyms_active ON gyms(is_active, deleted_at);
-CREATE INDEX idx_gyms_price  ON gyms(price_per_month) WHERE deleted_at IS NULL;
-CREATE INDEX idx_gyms_geo    ON gyms USING GIST(location);
-CREATE INDEX idx_gyms_fts ON gyms USING GIN(
+CREATE INDEX IF NOT EXISTS idx_gyms_city   ON gyms(city) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_gyms_area   ON gyms(area) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_gyms_active ON gyms(is_active, deleted_at);
+CREATE INDEX IF NOT EXISTS idx_gyms_price  ON gyms(price_per_month) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_gyms_geo    ON gyms USING GIST(location);
+CREATE INDEX IF NOT EXISTS idx_gyms_fts ON gyms USING GIN(
   to_tsvector('english', name || ' ' || area || ' ' || city)
 );
 
 -- ===========================================================================
 -- gym_amenities
 -- ===========================================================================
-CREATE TABLE gym_amenities (
+CREATE TABLE IF NOT EXISTS gym_amenities (
   gym_id  UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   amenity amenity_type NOT NULL,
   PRIMARY KEY (gym_id, amenity)
 );
-CREATE INDEX idx_amenities_gym ON gym_amenities(gym_id);
+CREATE INDEX IF NOT EXISTS idx_amenities_gym ON gym_amenities(gym_id);
 
 -- ===========================================================================
 -- reviews
 -- ===========================================================================
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id        UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   author_label  TEXT NOT NULL DEFAULT 'Verified Member',
@@ -117,8 +131,9 @@ CREATE TABLE reviews (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at    TIMESTAMPTZ
 );
-CREATE INDEX idx_reviews_gym_id ON reviews(gym_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_reviews_gym_id ON reviews(gym_id) WHERE deleted_at IS NULL;
 
+DROP TRIGGER IF EXISTS trg_reviews_updated ON reviews;
 CREATE TRIGGER trg_reviews_updated
 BEFORE UPDATE ON reviews
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -126,7 +141,7 @@ FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 -- ===========================================================================
 -- trainers
 -- ===========================================================================
-CREATE TABLE trainers (
+CREATE TABLE IF NOT EXISTS trainers (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id            UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   name              TEXT NOT NULL,
@@ -139,12 +154,12 @@ CREATE TABLE trainers (
   created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at        TIMESTAMPTZ
 );
-CREATE INDEX idx_trainers_gym ON trainers(gym_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_trainers_gym ON trainers(gym_id) WHERE deleted_at IS NULL;
 
 -- ===========================================================================
 -- membership_plans
 -- ===========================================================================
-CREATE TABLE membership_plans (
+CREATE TABLE IF NOT EXISTS membership_plans (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id           UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   name             TEXT NOT NULL,
@@ -156,12 +171,12 @@ CREATE TABLE membership_plans (
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at       TIMESTAMPTZ
 );
-CREATE INDEX idx_plans_gym ON membership_plans(gym_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_plans_gym ON membership_plans(gym_id) WHERE deleted_at IS NULL;
 
 -- ===========================================================================
 -- gym_classes
 -- ===========================================================================
-CREATE TABLE gym_classes (
+CREATE TABLE IF NOT EXISTS gym_classes (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id        UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   name          TEXT NOT NULL,
@@ -172,24 +187,24 @@ CREATE TABLE gym_classes (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at    TIMESTAMPTZ
 );
-CREATE INDEX idx_classes_gym ON gym_classes(gym_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_classes_gym ON gym_classes(gym_id) WHERE deleted_at IS NULL;
 
 -- ===========================================================================
 -- gym_faqs
 -- ===========================================================================
-CREATE TABLE gym_faqs (
+CREATE TABLE IF NOT EXISTS gym_faqs (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id     UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   question   TEXT NOT NULL,
   answer     TEXT NOT NULL,
   sort_order SMALLINT NOT NULL DEFAULT 0
 );
-CREATE INDEX idx_faqs_gym ON gym_faqs(gym_id);
+CREATE INDEX IF NOT EXISTS idx_faqs_gym ON gym_faqs(gym_id);
 
 -- ===========================================================================
 -- gym_gallery
 -- ===========================================================================
-CREATE TABLE gym_gallery (
+CREATE TABLE IF NOT EXISTS gym_gallery (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id      UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   url         TEXT NOT NULL,
@@ -197,12 +212,12 @@ CREATE TABLE gym_gallery (
   sort_order  SMALLINT NOT NULL DEFAULT 0,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_gallery_gym ON gym_gallery(gym_id);
+CREATE INDEX IF NOT EXISTS idx_gallery_gym ON gym_gallery(gym_id);
 
 -- ===========================================================================
 -- gym_certifications
 -- ===========================================================================
-CREATE TABLE gym_certifications (
+CREATE TABLE IF NOT EXISTS gym_certifications (
   gym_id UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   label  TEXT NOT NULL,
   PRIMARY KEY (gym_id, label)
@@ -211,7 +226,7 @@ CREATE TABLE gym_certifications (
 -- ===========================================================================
 -- inquiries
 -- ===========================================================================
-CREATE TABLE inquiries (
+CREATE TABLE IF NOT EXISTS inquiries (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   gym_id        UUID NOT NULL REFERENCES gyms(id),
   name          TEXT NOT NULL,
@@ -226,10 +241,11 @@ CREATE TABLE inquiries (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_inquiries_gym    ON inquiries(gym_id);
-CREATE INDEX idx_inquiries_status ON inquiries(status);
-CREATE INDEX idx_inquiries_date   ON inquiries(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_inquiries_gym    ON inquiries(gym_id);
+CREATE INDEX IF NOT EXISTS idx_inquiries_status ON inquiries(status);
+CREATE INDEX IF NOT EXISTS idx_inquiries_date   ON inquiries(created_at DESC);
 
+DROP TRIGGER IF EXISTS trg_inquiries_updated ON inquiries;
 CREATE TRIGGER trg_inquiries_updated
 BEFORE UPDATE ON inquiries
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -237,7 +253,7 @@ FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 -- ===========================================================================
 -- demo_requests
 -- ===========================================================================
-CREATE TABLE demo_requests (
+CREATE TABLE IF NOT EXISTS demo_requests (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name         TEXT NOT NULL,
   phone        TEXT NOT NULL,
@@ -253,6 +269,7 @@ CREATE TABLE demo_requests (
   updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+DROP TRIGGER IF EXISTS trg_demo_requests_updated ON demo_requests;
 CREATE TRIGGER trg_demo_requests_updated
 BEFORE UPDATE ON demo_requests
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -260,7 +277,7 @@ FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 -- ===========================================================================
 -- users
 -- ===========================================================================
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email           TEXT NOT NULL UNIQUE,
   email_verified  BOOLEAN NOT NULL DEFAULT FALSE,
@@ -278,6 +295,7 @@ CREATE TABLE users (
   deleted_at      TIMESTAMPTZ
 );
 
+DROP TRIGGER IF EXISTS trg_users_updated ON users;
 CREATE TRIGGER trg_users_updated
 BEFORE UPDATE ON users
 FOR EACH ROW EXECUTE FUNCTION set_updated_at();
@@ -285,7 +303,7 @@ FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 -- ===========================================================================
 -- owner_gym_links
 -- ===========================================================================
-CREATE TABLE owner_gym_links (
+CREATE TABLE IF NOT EXISTS owner_gym_links (
   user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   gym_id     UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   is_primary BOOLEAN NOT NULL DEFAULT TRUE,
@@ -296,7 +314,7 @@ CREATE TABLE owner_gym_links (
 -- ===========================================================================
 -- refresh_tokens
 -- ===========================================================================
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash  TEXT NOT NULL UNIQUE,
@@ -304,13 +322,13 @@ CREATE TABLE refresh_tokens (
   revoked_at  TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_rt_user   ON refresh_tokens(user_id);
-CREATE INDEX idx_rt_expiry ON refresh_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_rt_user   ON refresh_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_rt_expiry ON refresh_tokens(expires_at);
 
 -- ===========================================================================
 -- password_reset_tokens (used by /auth/forgot-password)
 -- ===========================================================================
-CREATE TABLE password_reset_tokens (
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash TEXT NOT NULL UNIQUE,
@@ -318,21 +336,21 @@ CREATE TABLE password_reset_tokens (
   used_at    TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_prt_user ON password_reset_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_prt_user ON password_reset_tokens(user_id);
 
 -- ===========================================================================
 -- page_views
 -- ===========================================================================
-CREATE TABLE page_views (
+CREATE TABLE IF NOT EXISTS page_views (
   id       BIGSERIAL PRIMARY KEY,
   gym_id   UUID REFERENCES gyms(id),
   path     TEXT NOT NULL,
   referrer TEXT,
   ts       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX idx_pv_gym_ts ON page_views(gym_id, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_pv_gym_ts ON page_views(gym_id, ts DESC);
 
-CREATE TABLE gym_daily_stats (
+CREATE TABLE IF NOT EXISTS gym_daily_stats (
   gym_id      UUID NOT NULL REFERENCES gyms(id) ON DELETE CASCADE,
   day         DATE NOT NULL,
   view_count  INTEGER NOT NULL DEFAULT 0,
