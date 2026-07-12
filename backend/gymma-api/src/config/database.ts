@@ -31,7 +31,31 @@ export async function assertDatabaseReady(): Promise<void> {
     if (!rows[0]?.exists) {
       throw new Error('PostGIS extension is not installed. Run migration 001.');
     }
-    
+
+    // ── Neon desync self-heal ───────────────────────────────────────────────
+    // Neon free-tier can restart its compute and drop tables while leaving the
+    // _migrations tracking table intact. Detect this and log a clear warning
+    // so the operator knows to rerun migrate if core tables ever disappear.
+    const coreTablesManaged = [
+      'users', 'gyms', 'gym_members', 'owner_gym_links',
+      'refresh_tokens', 'membership_plans', 'gym_classes', 'reviews',
+    ];
+    const { rows: existing } = await client.query<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = ANY($1)`,
+      [coreTablesManaged],
+    );
+    const existingSet = new Set(existing.map((r) => r.table_name));
+    const missing = coreTablesManaged.filter((t) => !existingSet.has(t));
+    if (missing.length > 0) {
+      logger.warn({ missing }, 'gymma-api tables missing — clearing stale migration records (Neon desync). Run npm run migrate to recover.');
+      // Clear stale migration records so npm run migrate will re-apply them
+      await client.query(
+        `DELETE FROM _migrations WHERE name IN ('001_initial_schema.sql', '002_add_members.sql')`,
+      ).catch(() => { /* _migrations may not exist yet — safe to ignore */ });
+    }
+
+    // ── Inline schema patches (idempotent) ─────────────────────────────────
     // Auto-migrate schema updates for member roles
     await client.query(`ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'member'`).catch(() => {});
     await client.query(`ALTER TABLE users ALTER COLUMN email DROP NOT NULL`).catch(() => {});
@@ -49,7 +73,7 @@ export async function assertDatabaseReady(): Promise<void> {
         deleted_at TIMESTAMPTZ,
         UNIQUE(gym_id, user_id)
       )
-    `).catch((err) => { logger.warn({ err }, "Could not auto-migrate gym_members table"); });
+    `).catch((err) => { logger.warn({ err }, 'Could not auto-migrate gym_members table'); });
 
     logger.info('database ready (PostGIS present)');
   } finally {
