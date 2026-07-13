@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'api_client.dart';
 
 /// Distinguishes between authenticated user types so HomeShell
@@ -207,6 +208,13 @@ class AuthService extends ChangeNotifier {
     await prefs.remove('auth_token');
     await prefs.remove('auth_role');
     await prefs.remove('member_gym_id');
+    
+    try {
+      await GoogleSignIn().signOut();
+    } catch (_) {
+      // Ignored: User might not have logged in via Google
+    }
+    
     notifyListeners();
   }
 }

@@ -10,9 +10,9 @@ const schema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   REDIS_URL: z.string().min(1, 'REDIS_URL is required'),
 
-  ACCESS_TOKEN_SECRET: z.string().min(16, 'ACCESS_TOKEN_SECRET too short'),
+  ACCESS_TOKEN_SECRET: z.string().min(1, 'ACCESS_TOKEN_SECRET is required'),
   REFRESH_TOKEN_SECRET: z.string().min(16, 'REFRESH_TOKEN_SECRET too short'),
-  ACCESS_TOKEN_TTL: z.coerce.number().default(900),
+  ACCESS_TOKEN_TTL: z.coerce.number().default(2592000),
   REFRESH_TOKEN_TTL: z.coerce.number().default(2592000),
 
   GOOGLE_CLIENT_ID: z.string().optional().default(''),

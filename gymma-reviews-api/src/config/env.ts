@@ -12,7 +12,7 @@ const schema = z.object({
 
   ACCESS_TOKEN_SECRET: z.string().min(16, 'ACCESS_TOKEN_SECRET too short'),
   REFRESH_TOKEN_SECRET: z.string().min(16, 'REFRESH_TOKEN_SECRET too short'),
-  ACCESS_TOKEN_TTL: z.coerce.number().default(900),
+  ACCESS_TOKEN_TTL: z.coerce.number().default(2592000),
   REFRESH_TOKEN_TTL: z.coerce.number().default(2592000),
 
   // Gymma Review System
