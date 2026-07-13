@@ -174,13 +174,38 @@ class _SendBroadcastScreenState extends State<SendBroadcastScreen> {
               child: Center(child: CircularProgressIndicator()),
             )
           else if (_sentError != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: AppColors.error.withOpacity(0.3)),
+              ),
               child: Column(
                 children: [
-                  Text(_sentError!, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary)),
-                  const SizedBox(height: 8),
-                  OutlinedButton(onPressed: _loadSent, child: const Text('Retry')),
+                  const Icon(Icons.error_outline_rounded, color: AppColors.error, size: 32),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Failed to load broadcasts',
+                    style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _sentError!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: _loadSent,
+                    icon: const Icon(Icons.refresh_rounded, size: 18),
+                    label: const Text('Retry'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.error.withOpacity(0.1),
+                      foregroundColor: AppColors.error,
+                      elevation: 0,
+                    ),
+                  ),
                 ],
               ),
             )

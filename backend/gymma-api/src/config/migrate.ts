@@ -4,16 +4,10 @@
 // desync pattern (tables vanish after a compute restart while _migrations
 // tracking table survives) and re-applies missing SQL files automatically,
 // so the service never starts up in a "looks healthy but broken" state.
-//
-// Advisory lock prevents a race if multiple instances restart simultaneously.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pool } from './database';
 import { logger } from './logger';
-
-// Stable integer key for pg_try_advisory_lock — unique per service.
-// 9876543210 = "gymma-api"
-const MIGRATION_LOCK_KEY = 9_876_543_210;
 
 // Tables created by 001_initial_schema.sql whose absence signals a desync.
 const SCHEMA_001_TABLES = ['gyms', 'users', 'owner_gym_links', 'refresh_tokens', 'membership_plans'];
@@ -31,70 +25,61 @@ export async function runMigrations(): Promise<void> {
       );
     `);
 
-    // Advisory lock — only one process runs migrations at a time.
-    const { rows: lockRows } = await client.query<{ acquired: boolean }>(
-      `SELECT pg_try_advisory_lock($1) AS acquired`,
-      [MIGRATION_LOCK_KEY],
+    // ── Neon desync self-heal ─────────────────────────────────────────────
+    // Check which managed tables actually exist in the database right now.
+    const allManaged = [...SCHEMA_001_TABLES, ...SCHEMA_002_TABLES];
+    const { rows: existing } = await client.query<{ table_name: string }>(
+      `SELECT table_name FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = ANY($1)`,
+      [allManaged],
     );
-    if (!lockRows[0]?.acquired) {
-      logger.info('gymma-api migration lock held by another process — skipping');
-      return;
+    const existingSet = new Set(existing.map((r) => r.table_name));
+
+    // If any 001 table is missing, force a re-run of 001_initial_schema.sql
+    const missing001 = SCHEMA_001_TABLES.filter((t) => !existingSet.has(t));
+    if (missing001.length > 0) {
+      logger.warn({ missing: missing001 }, 'gymma-api core tables missing — clearing stale migration record (Neon desync)');
+      await client.query(`DELETE FROM _migrations WHERE name = '001_initial_schema.sql'`);
     }
 
-    try {
-      // ── Neon desync self-heal ─────────────────────────────────────────────
-      // Check which managed tables actually exist in the database right now.
-      const allManaged = [...SCHEMA_001_TABLES, ...SCHEMA_002_TABLES];
-      const { rows: existing } = await client.query<{ table_name: string }>(
-        `SELECT table_name FROM information_schema.tables
-         WHERE table_schema = 'public' AND table_name = ANY($1)`,
-        [allManaged],
-      );
-      const existingSet = new Set(existing.map((r) => r.table_name));
+    // If any 002 table is missing, force a re-run of 002_add_members.sql
+    const missing002 = SCHEMA_002_TABLES.filter((t) => !existingSet.has(t));
+    if (missing002.length > 0) {
+      logger.warn({ missing: missing002 }, 'gymma-api member tables missing — clearing stale migration record (Neon desync)');
+      await client.query(`DELETE FROM _migrations WHERE name IN ('002_add_members.sql', '002_create_materialized_view.sql')`);
+    }
 
-      // If any 001 table is missing, force a re-run of 001_initial_schema.sql
-      const missing001 = SCHEMA_001_TABLES.filter((t) => !existingSet.has(t));
-      if (missing001.length > 0) {
-        logger.warn({ missing: missing001 }, 'gymma-api core tables missing — clearing stale migration record (Neon desync)');
-        await client.query(`DELETE FROM _migrations WHERE name = '001_initial_schema.sql'`);
+    // ── Apply pending migrations ──────────────────────────────────────────
+    const dir = join(__dirname, '..', '..', 'migrations');
+    const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
+    const { rows: applied } = await client.query<{ name: string }>('SELECT name FROM _migrations');
+    const appliedSet = new Set(applied.map((r) => r.name));
+
+    for (const file of files) {
+      if (appliedSet.has(file)) {
+        logger.info(`= skip   ${file}`);
+        continue;
       }
-
-      // If any 002 table is missing, force a re-run of 002_add_members.sql
-      const missing002 = SCHEMA_002_TABLES.filter((t) => !existingSet.has(t));
-      if (missing002.length > 0) {
-        logger.warn({ missing: missing002 }, 'gymma-api member tables missing — clearing stale migration record (Neon desync)');
-        await client.query(`DELETE FROM _migrations WHERE name IN ('002_add_members.sql', '002_create_materialized_view.sql')`);
-      }
-
-      // ── Apply pending migrations ──────────────────────────────────────────
-      const dir = join(__dirname, '..', '..', 'migrations');
-      const files = readdirSync(dir).filter((f) => f.endsWith('.sql')).sort();
-      const { rows: applied } = await client.query<{ name: string }>('SELECT name FROM _migrations');
-      const appliedSet = new Set(applied.map((r) => r.name));
-
-      for (const file of files) {
-        if (appliedSet.has(file)) {
-          logger.info(`= skip   ${file}`);
+      const sql = readFileSync(join(dir, file), 'utf8');
+      logger.info(`+ apply  ${file}`);
+      await client.query('BEGIN');
+      try {
+        await client.query(sql);
+        await client.query('INSERT INTO _migrations(name) VALUES ($1)', [file]);
+        await client.query('COMMIT');
+      } catch (err: any) {
+        await client.query('ROLLBACK');
+        if (err.code === '23505') {
+          // Unique violation: another process already applied it
+          logger.info(`= skip   ${file} (applied concurrently by another process)`);
           continue;
         }
-        const sql = readFileSync(join(dir, file), 'utf8');
-        logger.info(`+ apply  ${file}`);
-        await client.query('BEGIN');
-        try {
-          await client.query(sql);
-          await client.query('INSERT INTO _migrations(name) VALUES ($1)', [file]);
-          await client.query('COMMIT');
-        } catch (err) {
-          await client.query('ROLLBACK');
-          logger.error({ err }, `✗ failed  ${file}`);
-          throw err;
-        }
+        logger.error({ err }, `✗ failed  ${file}`);
+        throw err;
       }
-
-      logger.info('gymma-api migrations done');
-    } finally {
-      await client.query(`SELECT pg_advisory_unlock($1)`, [MIGRATION_LOCK_KEY]).catch(() => {});
     }
+
+    logger.info('gymma-api migrations done');
   } finally {
     client.release();
   }

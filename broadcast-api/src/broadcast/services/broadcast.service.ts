@@ -108,11 +108,13 @@ export async function listBroadcasts(
   const { gymId, userId, page, limit, unreadOnly } = args;
   const offsetVal = (page - 1) * limit;
 
-  const unreadFilter = unreadOnly ? 'AND (r.is_read IS NULL OR r.is_read = FALSE)' : '';
+  const unreadFilter = unreadOnly ? 'AND (r.is_read IS NULL OR r.is_read = FALSE) AND b.sender_id != $1' : '';
 
   const [rows, unreadRow] = await Promise.all([
     query<BroadcastWithSenderRow>(
-      `SELECT b.*, u.full_name AS sender_name, r.is_read, COUNT(*) OVER()::text AS total_count
+      `SELECT b.*, u.full_name AS sender_name,
+              COALESCE(r.is_read, b.sender_id = $1) AS is_read,
+              COUNT(*) OVER()::text AS total_count
          FROM broadcasts b
          LEFT JOIN users u ON u.id = b.sender_id
          LEFT JOIN broadcast_receipts r ON r.broadcast_id = b.id AND r.user_id = $1
@@ -127,6 +129,7 @@ export async function listBroadcasts(
          FROM broadcasts b
          LEFT JOIN broadcast_receipts r ON r.broadcast_id = b.id AND r.user_id = $1
         WHERE b.gym_id = $2 AND b.status != 'deleted'
+          AND b.sender_id != $1
           AND (r.is_read IS NULL OR r.is_read = FALSE)`,
       [userId, gymId],
     ),
