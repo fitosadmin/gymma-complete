@@ -210,6 +210,7 @@ class AuthService extends ChangeNotifier {
     await prefs.remove('member_gym_id');
     
     try {
+      await GoogleSignIn().disconnect();
       await GoogleSignIn().signOut();
     } catch (_) {
       // Ignored: User might not have logged in via Google
