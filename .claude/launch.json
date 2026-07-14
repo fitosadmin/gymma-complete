@@ -2,10 +2,16 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "gymma-frontend-prod",
+      "name": "gymma",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "start", "--prefix", "frontend/gymma"],
+      "runtimeArgs": ["run", "dev", "--prefix", "frontend/gymma"],
       "port": 3000
+    },
+    {
+      "name": "gymma-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "frontend/gymma-web"],
+      "port": 5173
     }
   ]
 }
