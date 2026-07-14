@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Star, MapPin, Phone, MessageCircle, ChevronRight, Share2, Bookmark, Navigation } from "lucide-react";
-import { getGymBySlug, getReviews, getAllSlugs } from "@/lib/api";
+import { getGymBySlug, getReviews } from "@/lib/api";
 import { GymImage } from "@/components/gym/gym-image";
 import { GymCarousel } from "@/components/gym-detail/gym-carousel";
 import { Badge } from "@/components/ui/badge";
@@ -19,13 +19,17 @@ import { ClassesList } from "@/components/gym-detail/classes-list";
 import { ReviewsSection } from "@/components/gym-detail/reviews-section";
 import { formatINR } from "@/lib/utils";
 
-export async function generateStaticParams() {
-  const slugs = await getAllSlugs();
-  return slugs.map((slug) => ({ slug }));
-}
+// Rendered per request (never at build — a sleeping API can't fail the
+// build), but the API responses themselves are cached for 60s at the fetch
+// layer (see api.ts `next: { revalidate: 60 }`), so the API is hit at most
+// ~once a minute and DB edits appear without a redeploy. Dynamic rendering —
+// unlike ISR — also lets error.tsx render a retry screen with a proper 5xx
+// when the API is down, instead of Next's bare "Internal Server Error".
+export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
-  const res = await getGymBySlug(params.slug);
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const res = await getGymBySlug(slug);
   if (!res.success || !res.data) return { title: "Gym not found" };
   const g = res.data;
   return {
@@ -38,9 +42,15 @@ function initials(name: string) {
   return name.split(" ").map((p) => p[0]).slice(0, 2).join("").toUpperCase();
 }
 
-export default async function GymDetailPage({ params }: { params: { slug: string } }) {
-  const [gymRes, reviewRes] = await Promise.all([getGymBySlug(params.slug), getReviews(params.slug)]);
-  if (!gymRes.success || !gymRes.data) notFound();
+export default async function GymDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params; // Next 16: params is a Promise — sync access yields undefined
+  const [gymRes, reviewRes] = await Promise.all([getGymBySlug(slug), getReviews(slug)]);
+  if (!gymRes.success || !gymRes.data) {
+    // API down (e.g. Render cold start) is not a 404 — bubble to error.tsx so
+    // the user gets a retry screen and crawlers get a 5xx, not a wrong 404.
+    if (gymRes.error?.code === "API_UNREACHABLE") throw new Error("Gym service unreachable — likely waking from sleep");
+    notFound();
+  }
 
   const g = gymRes.data;
   const reviews = reviewRes.data ?? [];

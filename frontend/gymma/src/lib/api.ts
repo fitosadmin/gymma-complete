@@ -3,6 +3,21 @@ import type { GymSummary, GymDetail, Review } from "@/types/gym";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api/v1";
 
+// The API sleeps on Render's free tier (30-60s cold starts) and may be down
+// entirely at build time. Every read in this module goes through apiFetch so
+// neither `next build` nor a server render can crash on an unreachable API —
+// callers get null and degrade to an empty/failure value instead.
+const API_TIMEOUT_MS = 10_000;
+
+async function apiFetch(url: string, init?: RequestInit): Promise<Response | null> {
+  try {
+    return await fetch(url, { signal: AbortSignal.timeout(API_TIMEOUT_MS), ...init });
+  } catch (err) {
+    console.warn(`[api] unreachable: ${url} (${err instanceof Error ? err.message : err})`);
+    return null;
+  }
+}
+
 export type SortKey = "relevance" | "distance" | "rating" | "price_asc";
 
 export function sortGyms(gyms: GymSummary[], sort: SortKey): GymSummary[] {
@@ -55,43 +70,30 @@ export async function getGyms(params?: { limit?: number }): Promise<Paginated<Gy
   const url = new URL(`${API_URL}/gyms`);
   if (params?.limit) url.searchParams.set("limit", params.limit.toString());
   
-  const res = await fetch(url.toString(), { next: { revalidate: 60 } });
-  if (!res.ok) throw new Error("Failed to fetch gyms");
+  const res = await apiFetch(url.toString(), { next: { revalidate: 60 } });
+  if (!res?.ok) return { success: false, data: [] };
   const json = await res.json();
   return { ...json, data: (json.data || []).map(mapGym) };
 }
 
+/** One curated rail; empty on any failure so the landing page always renders. */
+async function fetchRail(query: string) {
+  const res = await apiFetch(`${API_URL}/gyms?${query}`);
+  if (!res?.ok) return [];
+  const json = await res.json();
+  return (json.data || []).map(mapGym);
+}
+
 /** Curated rails for the landing page. */
 export async function getFeatured() {
-  // Fetch from the actual API instead of slicing mocks.
-  // Using limit=3 for each curated rail.
-  const [topRatedRes, nearbyRes, affordableRes, trendingRes] = await Promise.all([
-    fetch(`${API_URL}/gyms?sort=rating&limit=3`),
-    fetch(`${API_URL}/gyms?sort=distance&limit=3`),
-    fetch(`${API_URL}/gyms?sort=price_asc&limit=3`),
-    fetch(`${API_URL}/gyms?limit=3`) // Default sort / trending proxy
+  const [topRated, nearby, affordable, trending, womenFriendly] = await Promise.all([
+    fetchRail("sort=rating&limit=3"),
+    fetchRail("sort=distance&limit=3"),
+    fetchRail("sort=price_asc&limit=3"),
+    fetchRail("limit=3"), // Default sort / trending proxy
+    fetchRail("women_friendly=true&limit=3"),
   ]);
-
-  if (!topRatedRes.ok || !nearbyRes.ok || !affordableRes.ok || !trendingRes.ok) {
-    throw new Error("Failed to fetch featured gyms");
-  }
-
-  const topRated = await topRatedRes.json();
-  const nearby = await nearbyRes.json();
-  const affordable = await affordableRes.json();
-  const trending = await trendingRes.json();
-  
-  // Women friendly proxy for now: just filter a large fetch or use another param
-  const womenFriendlyRes = await fetch(`${API_URL}/gyms?women_friendly=true&limit=3`);
-  const womenFriendly = womenFriendlyRes.ok ? await womenFriendlyRes.json() : { data: [] };
-
-  return {
-    topRated: (topRated.data || []).map(mapGym),
-    nearby: (nearby.data || []).map(mapGym),
-    affordable: (affordable.data || []).map(mapGym),
-    womenFriendly: (womenFriendly.data || []).map(mapGym),
-    trending: (trending.data || []).map(mapGym),
-  };
+  return { topRated, nearby, affordable, womenFriendly, trending };
 }
 
 /** Headline marketing stats (placeholder figures). */
@@ -104,7 +106,10 @@ export const PLATFORM_STATS = [
 
 /** GET /gyms/:slug — full detail for the gym page. */
 export async function getGymBySlug(slug: string): Promise<ApiResponse<GymDetail>> {
-  const res = await fetch(`${API_URL}/gyms/${slug}`, { next: { revalidate: 60 } });
+  const res = await apiFetch(`${API_URL}/gyms/${encodeURIComponent(slug)}`, { next: { revalidate: 60 } });
+  // Unreachable ≠ not found: the page throws to its error boundary for this
+  // code instead of rendering a 404 for a gym that likely exists.
+  if (!res) return { success: false, error: { code: "API_UNREACHABLE", message: "Gym service is unreachable" } };
   if (!res.ok) {
     if (res.status === 404) return { success: false, error: { code: "NOT_FOUND", message: "Gym not found" } };
     return { success: false, error: { code: "INTERNAL_ERROR", message: "Failed to fetch gym details" } };
@@ -116,23 +121,15 @@ export async function getGymBySlug(slug: string): Promise<ApiResponse<GymDetail>
 /** GET /gyms/:id/reviews — paginated reviews. */
 export async function getReviews(gymId: string): Promise<Paginated<Review>> {
   // Use slug as the ID/slug param
-  const res = await fetch(`${API_URL}/gyms/${gymId}/reviews`, { next: { revalidate: 60 } });
-  if (!res.ok) throw new Error("Failed to fetch reviews");
+  const res = await apiFetch(`${API_URL}/gyms/${encodeURIComponent(gymId)}/reviews`, { next: { revalidate: 60 } });
+  if (!res?.ok) return { success: false, data: [] };
   return res.json();
-}
-
-/** All slugs for static generation of gym pages. */
-export async function getAllSlugs(): Promise<string[]> {
-  const res = await fetch(`${API_URL}/gyms?limit=50`);
-  if (!res.ok) return [];
-  const json = await res.json();
-  return (json.data || []).map((g: any) => g.slug);
 }
 
 /** All gyms enriched with detail (scores, etc.) — used by the compare tool. */
 export async function getAllGymDetails(): Promise<GymDetail[]> {
-  const res = await fetch(`${API_URL}/gyms?limit=50`);
-  if (!res.ok) return [];
+  const res = await apiFetch(`${API_URL}/gyms?limit=50`);
+  if (!res?.ok) return [];
   const json = await res.json();
   
   // Since compare needs full detail, we might have to fetch details for each

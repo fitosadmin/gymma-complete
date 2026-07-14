@@ -4,6 +4,7 @@ dist/
 build/
 .env
 .env.*
+!.env.example
 .DS_Store
 *firebase-adminsdk*.json
 gymma_flutter_api/gymma_flutter/build/
