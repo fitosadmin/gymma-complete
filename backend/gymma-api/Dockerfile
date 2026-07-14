@@ -4,13 +4,13 @@ ENV NODE_ENV=production
 
 FROM base AS deps
 ENV NODE_ENV=development
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
 
 FROM base AS build
 ENV NODE_ENV=development
-COPY package.json package-lock.json* ./
-RUN npm ci
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
 COPY tsconfig.json ./
 COPY src ./src
 RUN npm run build
