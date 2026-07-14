@@ -264,16 +264,16 @@ describe('auth register schema', () => {
 describe('auth login schema', () => {
   it('accepts valid login', () => {
     expect(() =>
-      loginBody.parse({ email: 'test@example.com', password: 'Passw0rd1' }),
+      loginBody.parse({ identifier: 'test@example.com', password: 'Passw0rd1' }),
     ).not.toThrow();
   });
 
-  it('rejects missing email', () => {
+  it('rejects missing identifier', () => {
     expect(() => loginBody.parse({ password: 'Passw0rd1' })).toThrow();
   });
 
   it('rejects missing password', () => {
-    expect(() => loginBody.parse({ email: 'test@example.com' })).toThrow();
+    expect(() => loginBody.parse({ identifier: 'test@example.com' })).toThrow();
   });
 });
 
