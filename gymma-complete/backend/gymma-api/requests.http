@@ -1,0 +1,59 @@
+### health
+GET http://localhost:3001/api/v1/health
+
+### list all gyms
+GET http://localhost:3001/api/v1/gyms?city=Bengaluru
+
+### sort by rating, women-friendly only
+GET http://localhost:3001/api/v1/gyms?women_friendly=true&sort=rating
+
+### nearest gyms within 5km of Indiranagar
+GET http://localhost:3001/api/v1/gyms?lat=12.9716&lng=77.6412&distance_km=5&sort=distance
+
+### filter by amenities (must have ALL)
+GET http://localhost:3001/api/v1/gyms?amenities=Sauna&amenities=AC
+
+### full-text search
+GET http://localhost:3001/api/v1/gyms?q=koramangala
+
+### price range (rupees)
+GET http://localhost:3001/api/v1/gyms?price_min=1500&price_max=2600
+
+### gym detail
+GET http://localhost:3001/api/v1/gyms/cult-fit-indiranagar
+
+### reviews (most helpful first)
+GET http://localhost:3001/api/v1/gyms/cult-fit-indiranagar/reviews?sort=helpful&limit=5
+
+### submit an inquiry (use a real gymId from /gyms)
+POST http://localhost:3001/api/v1/inquiries
+Content-Type: application/json
+
+{ "gymId": "PASTE_UUID", "name": "Rahul S", "phone": "9876543210", "message": "Annual plan?" }
+
+### partner demo request
+POST http://localhost:3001/api/v1/demo-requests
+Content-Type: application/json
+
+{ "name": "Owner", "phone": "9876543210", "email": "o@gym.in", "gymName": "Iron House", "memberCount": "100-300" }
+
+### register (owner)
+POST http://localhost:3001/api/v1/auth/register
+Content-Type: application/json
+
+{ "email": "owner@gym.in", "password": "Passw0rd1", "fullName": "Gym Owner" }
+
+### login
+POST http://localhost:3001/api/v1/auth/login
+Content-Type: application/json
+
+{ "email": "owner@gym.in", "password": "Passw0rd1" }
+
+### me (paste accessToken)
+GET http://localhost:3001/api/v1/auth/me
+Authorization: Bearer PASTE_ACCESS_TOKEN
+
+### owner's gyms
+GET http://localhost:3001/api/v1/owner/gyms
+Authorization: Bearer PASTE_ACCESS_TOKEN
+

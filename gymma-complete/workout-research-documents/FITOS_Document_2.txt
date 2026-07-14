@@ -1,0 +1,426 @@
+================================================================================
+                    FITOS — DOCUMENT 2
+        EXERCISE CLASSIFICATION SPECIFICATION
+           Master Backend Data Architecture & Exercise Taxonomy
+================================================================================
+
+1. THE PARSING PHILOSOPHY: HOW TO HANDLE HUNDREDS OF EXERCISES
+----------------------------------------------------------------
+The fundamental problem: There are 500+ resistance exercises in common use.
+How do you ensure nothing is missed, nothing is duplicated, and every exercise
+is correctly classified?
+
+THE SOLUTION: MATRIX-DRIVEN TAXONOMY
+Instead of collecting exercises ad-hoc, we define the complete combinatorial
+space first, then populate it. This is the same methodology used by medical
+coding systems (ICD-10) and biological taxonomies — define the dimensions,
+then fill the cells.
+
+We use 5 ORTHOGONAL DIMENSIONS that every exercise must have:
+
+| Dimension          | Purpose                                      | Why It Matters for the Engine                     |
+|--------------------|----------------------------------------------|---------------------------------------------------|
+| Movement Pattern   | What fundamental human movement does this train? | Maps to User Mobility Score and Injury flags     |
+| Muscle Group       | What tissue is the primary target?           | Maps to User Goal and Muscle Priority vector      |
+| Equipment          | What implements are required?                | Filtered by Gym Owner DB and User Preference      |
+| Difficulty         | How hard is this to perform correctly?       | Matched against Experience_Score                 |
+| Joint Complexity   | Single-joint vs. multi-joint                 | Determines workout hierarchy (compounds first)    |
+
+THE COVERAGE MATRIX
+If you take 7 primary movement patterns x 12 major muscle groups x 8 equipment
+types x 4 difficulty tiers, you get 2,688 theoretical cells. Not all are
+populated, but every empty cell is a KNOWN GAP that can be intentionally left
+blank or filled with a progression/regression.
+
+This ensures NOTHING IS MISSED BY ACCIDENT.
+
+================================================================================
+
+2. THE FIVE TAXONOMY DIMENSIONS (DETAILED)
+--------------------------------------------
+
+DIMENSION A: MOVEMENT PATTERN (THE "WHAT")
+Every exercise is classified by its primary movement pattern. Derived from the
+Functional Movement Screen and strength & conditioning literature.
+
+| Pattern Code | Name              | Description                              | FMS Analogue                          |
+|--------------|-------------------|------------------------------------------|---------------------------------------|
+| PUSH_HORZ    | Horizontal Push   | Pressing away from torso in frontal plane| Shoulder Mobility + Stability         |
+| PUSH_VERT    | Vertical Push     | Pressing overhead                        | Active Straight Leg Raise + Shoulder  |
+| PULL_HORZ    | Horizontal Pull   | Rowing toward torso                      | Thoracic Extension + Scapular Control |
+| PULL_VERT    | Vertical Pull     | Pulling from overhead                    | Shoulder Mobility + Lat Activation    |
+| SQUAT        | Squat Pattern     | Knee-dominant lower body                 | Deep Squat (FMS Test #1)              |
+| HINGE        | Hip Hinge         | Hip-dominant lower body                  | Active Straight Leg Raise             |
+| LUNGE        | Lunge/Single Leg  | Unilateral lower body                    | In-Line Lunge (FMS Test #2)           |
+| CARRY        | Loaded Carry      | Static/dynamic locomotion under load     | Core Stability                        |
+| ROTATION     | Rotary/Anti-Rot   | Torso rotation or resisting rotation     | Rotary Stability (FMS Test #6)        |
+| CORE_ANTI    | Core Anti-Ext/Ext | Planks, rollouts, back extensions        | Trunk Stability Push-Up (FMS #5)    |
+| ISOLATION    | Single-Joint Iso  | Direct muscle targeting                  | N/A — hypertrophy/balance             |
+
+WHY THIS MATTERS: The User's Mobility Score (S7_* fields) directly maps to
+these patterns. If a user cannot overhead press without lumbar extension
+(failed S7_OVERHEAD), the engine blacklists all PUSH_VERT exercises and
+suggests PUSH_HORZ alternatives or regressed vertical presses.
+
+--------------------------------------------------------------------------------
+
+DIMENSION B: MUSCLE GROUP (THE "WHERE")
+Hierarchical muscle taxonomy to ensure complete coverage.
+
+LEVEL 1: MAJOR GROUPS (12)
+CHEST, BACK, SHOULDERS, BICEPS, TRICEPS, QUADS, HAMSTRINGS, GLUTES, CALVES,
+CORE, FOREARMS, NECK
+
+LEVEL 2: SUB-REGIONS (for hypertrophy targeting)
+CHEST: Upper (Clavicular), Lower (Sternal), Mid
+BACK: Lats, Traps (Upper/Mid/Lower), Rhomboids, Erectors, Teres Minor
+SHOULDERS: Anterior, Lateral, Posterior, Rotator Cuff
+QUADS: Vastus Lateralis, Vastus Medialis, Rectus Femoris
+HAMSTRINGS: Biceps Femoris (Long/Short), Semitendinosus, Semimembranosus
+GLUTES: Maximus, Medius, Minimus
+CORE: Rectus Abdominis, Obliques, Transverse Abdominis, Erector Spinae, Multifidus
+
+WHY THIS MATTERS: When a user selects S4_TARGET_AREAS = ["Lateral Delts",
+"Upper Chest"], the engine queries the muscle hierarchy and prioritizes exercises
+where those muscles are Primary or Secondary.
+
+--------------------------------------------------------------------------------
+
+DIMENSION C: EQUIPMENT (THE "WITH WHAT")
+
+| Code     | Category              | Stability Level | Notes                                      |
+|----------|-----------------------|-----------------|--------------------------------------------|
+| BB       | Barbell               | Free            | Highest stability demand, highest load     |
+| DB       | Dumbbell              | Free            | Unilateral, moderate stability             |
+| KB       | Kettlebell            | Free            | Offset load, high grip/core demand         |
+| MACHINE  | Selectorized Machine  | Fixed           | Lowest stability, isolation-friendly       |
+| CABLE    | Cable System          | Semi-fixed      | Constant tension, variable angle           |
+| BW       | Bodyweight            | Variable        | Scalable via leverage, angle, tempo        |
+| BAND     | Resistance Band       | Variable        | Accommodating resistance, joint-friendly   |
+| TRX      | Suspension Trainer    | Unstable        | High core demand, scalable                 |
+| SM       | Smith Machine         | Semi-fixed      | Fixed bar path, reduced stabilization      |
+| MEDBALL  | Medicine Ball         | Free            | Power/explosive work                       |
+
+WHY THIS MATTERS: The Gym Owner pre-filters the global database into a
+Gym_Exercise_Database. The User's S8_STYLE preference further filters. A beginner
+(Experience_Score < 20) with S8_STYLE = 'Machines' will only see MACHINE and
+CABLE exercises with Difficulty < 30.
+
+--------------------------------------------------------------------------------
+
+DIMENSION D: DIFFICULTY (THE "HOW HARD")
+Difficulty is NOT subjective. It is computed from a weighted formula:
+
+DIFFICULTY_SCORE = (
+  Stability_Demand     x 0.30 +
+  Coordination_Complexity x 0.25 +
+  Load_Required_For_Effect x 0.20 +
+  Mobility_Required    x 0.15 +
+  Injury_Risk_Factor   x 0.10
+)
+
+Each sub-component is scored 0-100.
+
+| Difficulty Tier      | Score Range | Typical Characteristics                  | Experience Match |
+|----------------------|-------------|------------------------------------------|------------------|
+| Tier 1: Foundational | 0-25        | Machines, fixed path, low load           | Experience < 20  |
+| Tier 2: Developmental| 26-50       | DB, cables, simple BW, moderate stability| Experience 20-40 |
+| Tier 3: Intermediate | 51-75       | BB, complex BW, unilateral work         | Experience 40-70 |
+| Tier 4: Advanced     | 76-100      | Olympic lifts, unstable surfaces         | Experience > 70  |
+
+EXAMPLE DIFFICULTY CALCULATIONS:
+
+| Exercise                | Stability | Coordination | Load Req. | Mobility | Injury Risk | TOTAL |
+|-------------------------|-----------|--------------|-----------|----------|-------------|-------|
+| Leg Press               | 10        | 5            | 30        | 10       | 10          | 13    |
+| Goblet Squat            | 40        | 30           | 35        | 35       | 25          | 34    |
+| Barbell Back Squat      | 60        | 50           | 50        | 45       | 40          | 50    |
+| Barbell Snatch          | 90        | 95           | 70        | 80       | 75          | 84    |
+
+--------------------------------------------------------------------------------
+
+DIMENSION E: JOINT COMPLEXITY & CONTRAINDICATIONS (THE "SAFETY")
+
+| Attribute          | Type  | Description                                      |
+|--------------------|-------|--------------------------------------------------|
+| Joint_Actions      | Array | [Knee_Flexion, Hip_Extension, Shoulder_Abduction]|
+| Spinal_Load        | Enum  | None / Low / Moderate / High / Axial             |
+| Contraindications  | Array | Maps to S6_INJURY_LIST and S7_* flags            |
+| Progression_From   | FK    | Links to easier variant                          |
+| Regression_To      | FK    | Links to harder variant                          |
+
+CONTRAINDICATION MAPPING:
+
+| User Flag              | Blacklisted Movement Characteristics          | Example Blacklisted Exercises          |
+|------------------------|-------------------------------------------------|----------------------------------------|
+| SHOULDER_IMPINGEMENT   | Overhead pressing, internal rotation under load | Overhead Press, Kipping Pull-Up, Dip   |
+| LOW_BACK_PAIN          | Axial spinal load, spinal flexion under load    | Barbell Deadlift, Good Morning, Sit-Up |
+| KNEE_PAIN              | Deep knee flexion, forward knee travel under load| ATG Squat, Forward Lunge, Sissy Squat |
+| WRIST_PAIN             | Wrist extension under load, barbell grip        | Barbell Bench, Barbell Curl, Front Squat|
+| ANKLE_MOBILITY_LIMIT   | Deep dorsiflexion requirement                   | Back Squat (replaced with Box Squat)   |
+
+================================================================================
+
+3. THE EXERCISE PROFILE VECTOR (DATABASE SCHEMA)
+------------------------------------------------
+This is the master data structure stored in the backend.
+
+POSTGRESQL / JSONB HYBRID SCHEMA:
+
+-- ============================================
+-- CORE TABLES
+-- ============================================
+
+CREATE TABLE exercises (
+    exercise_id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code                 VARCHAR(50) UNIQUE NOT NULL,
+    name                 VARCHAR(200) NOT NULL,
+    display_name         VARCHAR(200) NOT NULL,
+    description          TEXT,
+    primary_pattern_id   UUID REFERENCES movement_patterns(pattern_id),
+    joint_complexity     ENUM('compound', 'isolation'),
+    plane_of_motion      ENUM('sagittal', 'frontal', 'transverse', 'multi'),
+    difficulty_score     INTEGER CHECK (difficulty_score BETWEEN 0 AND 100),
+    stability_demand     INTEGER CHECK (stability_demand BETWEEN 0 AND 100),
+    coordination_complexity INTEGER CHECK (coordination_complexity BETWEEN 0 AND 100),
+    mobility_required    INTEGER CHECK (mobility_required BETWEEN 0 AND 100),
+    injury_risk_factor   INTEGER CHECK (injury_risk_factor BETWEEN 0 AND 100),
+    goal_strength        INTEGER CHECK (goal_strength BETWEEN 0 AND 100),
+    goal_hypertrophy     INTEGER CHECK (goal_hypertrophy BETWEEN 0 AND 100),
+    goal_endurance       INTEGER CHECK (goal_endurance BETWEEN 0 AND 100),
+    goal_power           INTEGER CHECK (goal_power BETWEEN 0 AND 100),
+    experience_minimum   INTEGER CHECK (experience_minimum BETWEEN 0 AND 100),
+    video_url            VARCHAR(500),
+    image_url            VARCHAR(500),
+    created_at           TIMESTAMP DEFAULT NOW(),
+    updated_at           TIMESTAMP DEFAULT NOW(),
+    version              INTEGER DEFAULT 1,
+    metadata             JSONB
+);
+
+-- ============================================
+-- MANY-TO-MANY LINK TABLES
+-- ============================================
+
+CREATE TABLE exercise_muscles (
+    exercise_id UUID REFERENCES exercises(exercise_id),
+    muscle_id   UUID REFERENCES muscles(muscle_id),
+    role        ENUM('primary', 'secondary', 'tertiary', 'stabilizer'),
+    PRIMARY KEY (exercise_id, muscle_id)
+);
+
+CREATE TABLE exercise_equipment (
+    exercise_id   UUID REFERENCES exercises(exercise_id),
+    equipment_id  UUID REFERENCES equipment(equipment_id),
+    is_primary    BOOLEAN DEFAULT FALSE,
+    PRIMARY KEY (exercise_id, equipment_id)
+);
+
+CREATE TABLE exercise_contraindications (
+    exercise_id          UUID REFERENCES exercises(exercise_id),
+    contraindication_id  UUID REFERENCES contraindications(contraindication_id),
+    severity             ENUM('absolute', 'relative', 'caution'),
+    PRIMARY KEY (exercise_id, contraindication_id)
+);
+
+CREATE TABLE exercise_progressions (
+    from_exercise_id UUID REFERENCES exercises(exercise_id),
+    to_exercise_id   UUID REFERENCES exercises(exercise_id),
+    progression_type ENUM('load', 'stability', 'complexity', 'range_of_motion'),
+    PRIMARY KEY (from_exercise_id, to_exercise_id)
+);
+
+-- ============================================
+-- GYM-OWNER FILTERING TABLE
+-- ============================================
+
+CREATE TABLE gym_exercise_database (
+    gym_id       UUID REFERENCES gyms(gym_id),
+    exercise_id  UUID REFERENCES exercises(exercise_id),
+    is_available BOOLEAN DEFAULT TRUE,
+    custom_notes TEXT,
+    PRIMARY KEY (gym_id, exercise_id)
+);
+
+================================================================================
+
+4. HOW TO POPULATE THE DATABASE WITHOUT MISSING ANYTHING
+---------------------------------------------------------
+
+PHASE 1: SEED FROM AUTHORITATIVE SOURCES (Week 1-2)
+We do not invent exercises. We parse from established libraries:
+
+| Source                  | What We Extract                    | Volume Estimate | Quality                  |
+|-------------------------|------------------------------------|-----------------|--------------------------|
+| ExRx.net                | Exercise directory, muscle maps    | ~800 exercises  | High — standard reference|
+| NSCA Exercise Library   | Strength & conditioning movements  | ~300 exercises  | High — research-backed   |
+| ACE Exercise Library    | Fitness professional standards     | ~200 exercises  | High — certification     |
+| StrengthLevel Database  | Difficulty norms, strength standards| Metadata only   | High — crowd-sourced     |
+| Academic Papers         | EMG studies, muscle activation data| ~50 movements   | Very High — peer-reviewed|
+
+PARSING METHODOLOGY:
+1. Web scrape + manual curation — Automated extraction of exercise names,
+   descriptions, muscle groups, and equipment. Manual review for accuracy.
+2. EMG validation — Where available, muscle activation data from studies is used
+   to confirm primary vs. secondary assignments.
+3. Expert review — Every exercise is reviewed by a certified strength coach
+   against the taxonomy. If an exercise doesn't fit the matrix, the taxonomy is
+   expanded (not the exercise ignored).
+
+PHASE 2: MATRIX GAP ANALYSIS (Week 3)
+After seeding, run a coverage query:
+
+SELECT mp.pattern_name, m.muscle_name, e.equipment_name,
+       COUNT(ex.exercise_id) as exercise_count
+FROM movement_patterns mp
+CROSS JOIN muscles m
+CROSS JOIN equipment e
+LEFT JOIN exercises ex ON ex.primary_pattern_id = mp.pattern_id
+LEFT JOIN exercise_muscles em ON em.exercise_id = ex.exercise_id
+LEFT JOIN exercise_equipment ee ON ee.exercise_id = ex.exercise_id
+WHERE m.is_major = TRUE
+GROUP BY mp.pattern_name, m.muscle_name, e.equipment_name
+HAVING COUNT(ex.exercise_id) = 0;
+
+This returns EVERY EMPTY CELL in the matrix. These are either:
+- Intentionally empty (e.g., "Vertical Pull x Quads x Barbell" — impossible)
+- Gaps to fill (e.g., "Horizontal Push x Upper Chest x Cable" — missing cable incline fly)
+
+PHASE 3: PROGRESSION/REGRESSION CHAINING (Week 4)
+Every exercise must have a regression (easier) and progression (harder).
+This creates a skill tree that the engine traverses when adapting to user scores.
+
+EXAMPLE CHAIN:
+Leg Press (13) -> Goblet Squat (34) -> Front Squat (55) -> Back Squat (50)
+  -> Pause Squat (62) -> Safety Bar Squat (58) -> Low-Bar Squat (65)
+
+WHY THIS MATTERS: If a user has Experience_Score = 30 and Mobility_Score = 40
+with ANKLE_MOBILITY_LIMIT, the engine starts at Back Squat, checks
+experience_minimum = 35 (too high), checks mobility_requirements.ANKLE = 25
+(user has limit), then walks down the regression chain to Goblet Squat
+(difficulty 34, ankle req 15) — which fits.
+
+================================================================================
+
+5. BACKEND DATA INTEGRITY & VERSION CONTROL
+--------------------------------------------
+
+VALIDATION RULES (Database Constraints):
+
+| Rule                                      | Implementation                          | Purpose                          |
+|-------------------------------------------|-----------------------------------------|----------------------------------|
+| Every exercise must have >=1 primary muscle| CHECK constraint on exercise_muscles    | Prevents orphaned exercises      |
+| Every exercise must have >=1 equipment    | CHECK constraint on exercise_equipment  | Prevents impossible exercises    |
+| Difficulty sub-scores sum within tolerance| Application-level validation            | Prevents miscalculation          |
+| No circular progressions                  | Graph cycle detection                   | Prevents infinite loops          |
+| Contraindication alternatives must exist  | Foreign key check on alternative field  | Prevents broken fallback chains  |
+
+AUDIT TRAIL:
+
+CREATE TABLE exercise_audit_log (
+    log_id          UUID PRIMARY KEY,
+    exercise_id     UUID REFERENCES exercises(exercise_id),
+    changed_by      UUID REFERENCES users(user_id),
+    changed_at      TIMESTAMP DEFAULT NOW(),
+    field_changed   VARCHAR(100),
+    old_value       JSONB,
+    new_value       JSONB,
+    change_reason   TEXT
+);
+
+Every modification to an exercise's difficulty, muscle assignment, or
+contraindication is logged. This is critical because:
+- If a trainer disputes a recommendation, you can audit why the engine chose it
+- If research updates, you can trace the change
+- A/B testing of recommendation algorithms requires versioned exercise data
+
+================================================================================
+
+6. THE EXERCISE-TO-USER MATCHING ENGINE (Preview of Document 3)
+---------------------------------------------------------------
+
+This is how the Exercise Profile Vector meets the User Fitness Profile Vector
+from Document 1.
+
+PSEUDOCODE:
+
+function match_exercise_to_user(exercise, user):
+    # 1. Hard Filters (Binary Pass/Fail)
+    if exercise.experience_minimum > user.experience_score:
+        return MatchScore(0, "Experience gate")
+
+    if not exercise.equipment.issubset(gym_available_equipment):
+        return MatchScore(0, "Equipment unavailable")
+
+    for contraindication in exercise.contraindications:
+        if contraindication.flag in user.injury_flags:
+            if contraindication.severity == 'absolute':
+                return MatchScore(0, "Absolute contraindication")
+            elif contraindication.severity == 'relative':
+                return MatchScore(0, "Relative contraindication, alternative: " + contraindication.alternative)
+
+    # 2. Mobility Filter
+    for joint, required_mobility in exercise.mobility_requirements.items():
+        user_mobility = user.mobility_score.get(joint, 100)
+        if user_mobility < required_mobility:
+            return MatchScore(0, "Insufficient " + joint + " mobility")
+
+    # 3. Soft Scoring (0-100)
+    goal_score = exercise.goal_compatibility[user.primary_goal]
+    difficulty_fit = 100 - abs(exercise.difficulty.overall - user.experience_score)
+
+    preference_score = 0
+    if user.preferred_style in exercise.equipment:
+        preference_score = 80
+    elif user.preferred_style == 'mixed':
+        preference_score = 60
+
+    muscle_priority_score = 0
+    for muscle in user.target_muscles:
+        if muscle in exercise.muscle_targets.primary:
+            muscle_priority_score += 30
+        elif muscle in exercise.muscle_targets.secondary:
+            muscle_priority_score += 15
+
+    # 4. Weighted Match Score
+    match = (
+        goal_score * 0.30 +
+        difficulty_fit * 0.25 +
+        preference_score * 0.15 +
+        muscle_priority_score * 0.20 +
+        (100 - exercise.injury_risk_factor) * 0.10
+    )
+
+    return MatchScore(match, "Successful match")
+
+================================================================================
+
+7. SUMMARY: WHY THIS ARCHITECTURE ENSURES NOTHING IS MISSED
+-----------------------------------------------------------
+
+| Risk                 | Mitigation Strategy                                      |
+|----------------------|----------------------------------------------------------|
+| Missing exercises    | Matrix-driven taxonomy. Empty cells explicitly identified.|
+| Incorrect muscle targeting | EMG data validation + expert review.                  |
+| Wrong difficulty     | Formula-driven difficulty, not subjective opinion.       |
+| Safety gaps          | Contraindication DB linked to injury flags. Every exercise has a regression alternative. |
+| Backend data rot     | Audit logs, version control, validation constraints.     |
+| Gym-specific availability | gym_exercise_database table. Gym owners filter global DB. |
+
+================================================================================
+
+8. SOURCES & METHODOLOGY REFERENCES
+-----------------------------------
+
+| Component              | Source / Standard                                      |
+|------------------------|--------------------------------------------------------|
+| Movement Patterns      | NSCA Essentials of Strength Training, FMS                |
+| Muscle Taxonomy        | ExRx.net muscle directory, Netter Atlas of Anatomy       |
+| Difficulty Scoring     | NSCA load progression guidelines, RPE/RIR research     |
+| Contraindications      | ACSM Exercise Management for Chronic Diseases          |
+| EMG Validation         | Academic EMG studies (Boeckh-Behrens, Schoenfeld)      |
+| Database Design        | PostgreSQL JSONB best practices, normalization patterns  |
+
+================================================================================
+                              END OF DOCUMENT 2
+================================================================================

@@ -1,0 +1,257 @@
+import 'package:flutter/material.dart';
+import '../models/gym.dart';
+import '../theme.dart';
+import '../utils/format.dart';
+import '../screens/gym_detail_screen.dart';
+import 'common.dart';
+
+class GymCard extends StatelessWidget {
+  final GymSummary gym;
+  final bool compact;
+  const GymCard(this.gym, {super.key, this.compact = false});
+
+  void _open(BuildContext context) {
+    Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => GymDetailScreen(slug: gym.slug),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (compact) return _buildCompact(context);
+
+    final dist = formatDistance(gym.distanceKm);
+    final localIsOpen = checkIsOpenNow(gym.opensAt, gym.closesAt, fallback: gym.isOpenNow);
+    final closesAtFormatted = formatTimeShort(gym.closesAt);
+    final opensAtFormatted = formatTimeShort(gym.opensAt);
+    
+    return Material(
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: () => _open(context),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.divider),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.brandNavy.withOpacity(0.05),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              )
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // ---- Cover ----
+              Stack(
+                children: [
+                  GymImage(
+                    name: gym.name,
+                    src: gym.coverImage,
+                    height: 148,
+                    radius: const BorderRadius.vertical(
+                        top: Radius.circular(AppRadius.lg)),
+                  ),
+                  Positioned(
+                    top: 10,
+                    left: 10,
+                    child: Row(children: [
+                      if (localIsOpen)
+                        GymBadge(closesAtFormatted != null ? 'Open · Closes $closesAtFormatted' : 'Open', variant: BadgeVariant.success)
+                      else
+                        GymBadge(opensAtFormatted != null ? 'Closed · Opens $opensAtFormatted' : 'Closed', variant: BadgeVariant.neutral),
+                      if (gym.isPremium) ...[
+                        const SizedBox(width: 6),
+                        const GymBadge('Premium',
+                            variant: BadgeVariant.secondary),
+                      ],
+                    ]),
+                  ),
+                ],
+              ),
+              // ---- Body ----
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(gym.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.2)),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.star_rounded,
+                              size: 16, color: AppColors.rating),
+                          const SizedBox(width: 2),
+                          Text(gym.rating.toStringAsFixed(1),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700, fontSize: 14)),
+                          Text(' (${gym.reviewCount})',
+                              style: const TextStyle(
+                                  color: AppColors.neutral500, fontSize: 12)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(children: [
+                        const Icon(Icons.location_on_outlined,
+                            size: 14, color: AppColors.neutral400),
+                        const SizedBox(width: 3),
+                        Expanded(
+                          child: Text(
+                            dist == null
+                                ? '${gym.area}, ${gym.city}'
+                                : '${gym.area} · $dist',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                                color: AppColors.neutral500, fontSize: 13),
+                          ),
+                        ),
+                      ]),
+                      const SizedBox(height: 10),
+                      // amenity chips (first 3), single row, no wrap
+                      SizedBox(
+                        height: 26,
+                        child: ListView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const NeverScrollableScrollPhysics(),
+                          children: [
+                            for (final a in gym.amenities.take(3))
+                              Container(
+                                margin: const EdgeInsets.only(right: 6),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                              color: AppColors.paperBackground,
+                                  borderRadius:
+                                      BorderRadius.circular(AppRadius.full),
+                                  border:
+                                      Border.all(color: AppColors.neutral200),
+                                ),
+                                child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(amenityIcon(a),
+                                          size: 12,
+                                          color: AppColors.neutral600),
+                                      const SizedBox(width: 4),
+                                      Text(a,
+                                          style: const TextStyle(
+                                              fontSize: 11,
+                                              color: AppColors.neutral700)),
+                                    ]),
+                              ),
+                            if (gym.amenities.length > 3)
+                              Container(
+                                alignment: Alignment.center,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 4),
+                                child: Text('+${gym.amenities.length - 3}',
+                                    style: const TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.neutral500)),
+                              ),
+                          ],
+                        ),
+                      ),
+                      const Spacer(),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (gym.womenFriendly)
+                            const Padding(
+                              padding: EdgeInsets.only(right: 8),
+                              child: Icon(Icons.woman,
+                                  size: 18, color: AppColors.brandCopper),
+                            ),
+                          const Spacer(),
+                          Text(formatINR(gym.pricePerMonth),
+                              style: const TextStyle(
+                                  fontSize: 18, fontWeight: FontWeight.w800)),
+                          const Text('/mo',
+                              style: TextStyle(
+                                  color: AppColors.neutral500, fontSize: 13)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompact(BuildContext context) {
+    return Material(
+      color: AppColors.neutral0,
+      borderRadius: BorderRadius.circular(AppRadius.md),
+      child: InkWell(
+        onTap: () => _open(context),
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.md),
+            border: Border.all(color: AppColors.neutral200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: GymImage(
+                  name: gym.name,
+                  src: gym.coverImage,
+                  radius: const BorderRadius.vertical(top: Radius.circular(AppRadius.md)),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      gym.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        const Icon(Icons.star_rounded, size: 12, color: AppColors.rating),
+                        const SizedBox(width: 2),
+                        Text(
+                          gym.rating.toStringAsFixed(1),
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+                        ),
+                        if (gym.isPremium) ...[
+                          const Spacer(),
+                          const Icon(Icons.workspace_premium, size: 12, color: AppColors.primary500),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

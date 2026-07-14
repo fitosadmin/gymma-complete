@@ -1,0 +1,656 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Gym {
+  id                 String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug               String                    @unique
+  name               String
+  description        String?
+  area               String
+  city               String                    @default("Bengaluru")
+  phone              String?
+  whatsapp           String?
+  address_line       String?
+  website            String?
+  location           Unsupported("geography")?
+  lat                Decimal                   @db.Decimal(10, 7)
+  lng                Decimal                   @db.Decimal(10, 7)
+  price_per_month    Int
+  is_premium         Boolean                   @default(false)
+  women_friendly     Boolean                   @default(false)
+  has_parking        Boolean                   @default(false)
+  is_active          Boolean                   @default(true)
+  opens_at           DateTime?                 @db.Time(6)
+  closes_at          DateTime?                 @db.Time(6)
+  profile_score      Int                       @default(0) @db.SmallInt
+  years_operating    Int?                      @db.SmallInt
+  cover_image_url    String?
+  createdAt          DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at         DateTime                  @default(now()) @db.Timestamptz(6)
+  deleted_at         DateTime?                 @db.Timestamptz(6)
+  gym_amenities      gym_amenities[]
+  gym_certifications gym_certifications[]
+  gym_classes        gym_classes[]
+  gym_daily_stats    gym_daily_stats[]
+  gym_faqs           gym_faqs[]
+  gym_gallery        gym_gallery[]
+  gym_members        gym_members[]
+  inquiries          inquiries[]
+  membership_plans   membership_plans[]
+  owner_gym_links    owner_gym_links[]
+  page_views         page_views[]
+  reviews            reviews[]
+  trainers           trainers[]
+
+  users     User[]                @relation("UserToGym")
+  exercises GymExerciseDatabase[]
+
+  @@index([is_active, deleted_at], map: "idx_gyms_active")
+  @@index([location], map: "idx_gyms_geo", type: Gist)
+  @@map("gyms")
+}
+
+model User {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  email           String?   @unique
+  email_verified  Boolean   @default(false)
+  passwordHash    String?   @map("password_hash")
+  role            user_role @default(owner)
+  google_id       String?   @unique
+  full_name       String?
+  avatar_url      String?
+  phone           String?   @unique
+  failed_attempts Int       @default(0) @db.SmallInt
+  locked_until    DateTime? @db.Timestamptz(6)
+  last_login_at   DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updated_at      DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_at      DateTime? @db.Timestamptz(6)
+  gymId           String?   @map("gym_id") @db.Uuid
+
+  gym             Gym?             @relation("UserToGym", fields: [gymId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assessments     Assessment[]
+  workoutPlans    WorkoutPlan[]
+  performanceLogs PerformanceLog[]
+  workoutSessions WorkoutSession[]
+  personalRecords PersonalRecord[]
+
+  gym_members           gym_members[]
+  owner_gym_links       owner_gym_links[]
+  password_reset_tokens password_reset_tokens[]
+  refresh_tokens        refresh_tokens[]
+
+  @@map("users")
+}
+
+model migrations {
+  name       String   @id
+  applied_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("_migrations")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model demo_requests {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  phone        String
+  email        String
+  gym_name     String
+  city         String?
+  area         String?
+  member_count String?
+  notes        String?
+  status       String   @default("pending")
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model gym_amenities {
+  gym_id  String       @db.Uuid
+  amenity amenity_type
+  gyms    Gym          @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([gym_id, amenity])
+  @@index([gym_id], map: "idx_amenities_gym")
+}
+
+model gym_certifications {
+  gym_id String @db.Uuid
+  label  String
+  gyms   Gym    @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([gym_id, label])
+}
+
+model gym_classes {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gym_id       String    @db.Uuid
+  name         String
+  schedule     String
+  duration_min Int       @db.SmallInt
+  trainer_name String
+  sort_order   Int       @default(0) @db.SmallInt
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_at   DateTime? @db.Timestamptz(6)
+  gyms         Gym       @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model gym_daily_stats {
+  gym_id     String   @db.Uuid
+  day        DateTime @db.Date
+  view_count Int      @default(0)
+  gyms       Gym      @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([gym_id, day])
+}
+
+model gym_faqs {
+  id         String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gym_id     String @db.Uuid
+  question   String
+  answer     String
+  sort_order Int    @default(0) @db.SmallInt
+  gyms       Gym    @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([gym_id], map: "idx_faqs_gym")
+}
+
+model gym_gallery {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gym_id     String   @db.Uuid
+  url        String
+  caption    String?
+  sort_order Int      @default(0) @db.SmallInt
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  gyms       Gym      @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([gym_id], map: "idx_gallery_gym")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model gym_members {
+  id                 String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gym_id             String            @db.Uuid
+  user_id            String            @db.Uuid
+  status             String            @default("active")
+  membership_plan_id String?           @db.Uuid
+  start_date         DateTime?         @db.Date
+  end_date           DateTime?         @db.Date
+  created_at         DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?         @db.Timestamptz(6)
+  deleted_at         DateTime?         @db.Timestamptz(6)
+  gyms               Gym               @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  membership_plans   membership_plans? @relation(fields: [membership_plan_id], references: [id], onUpdate: NoAction)
+  users              User              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([gym_id, user_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model inquiries {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gym_id        String   @db.Uuid
+  name          String
+  phone         String
+  message       String?
+  plan_interest String?
+  status        String   @default("new")
+  source_page   String?
+  utm_source    String?
+  notes         String?
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime @default(now()) @db.Timestamptz(6)
+  gyms          Gym      @relation(fields: [gym_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([created_at(sort: Desc)], map: "idx_inquiries_date")
+  @@index([gym_id], map: "idx_inquiries_gym")
+  @@index([status], map: "idx_inquiries_status")
+}
+
+model membership_plans {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gym_id          String        @db.Uuid
+  name            String
+  duration_months Int           @db.SmallInt
+  price           Int
+  benefits        String[]      @default([])
+  is_recommended  Boolean       @default(false)
+  sort_order      Int           @default(0) @db.SmallInt
+  created_at      DateTime      @default(now()) @db.Timestamptz(6)
+  deleted_at      DateTime?     @db.Timestamptz(6)
+  gym_members     gym_members[]
+  gyms            Gym           @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model owner_gym_links {
+  user_id    String   @db.Uuid
+  gym_id     String   @db.Uuid
+  is_primary Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz(6)
+  gyms       Gym      @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users      User     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([user_id, gym_id])
+}
+
+model page_views {
+  id       BigInt   @id @default(autoincrement())
+  gym_id   String?  @db.Uuid
+  path     String
+  referrer String?
+  ts       DateTime @default(now()) @db.Timestamptz(6)
+  gyms     Gym?     @relation(fields: [gym_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([gym_id, ts(sort: Desc)], map: "idx_pv_gym_ts")
+}
+
+model password_reset_tokens {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  token_hash String    @unique
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  users      User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_prt_user")
+}
+
+model refresh_tokens {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  token_hash String    @unique
+  expires_at DateTime  @db.Timestamptz(6)
+  revoked_at DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  users      User      @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at], map: "idx_rt_expiry")
+  @@index([user_id], map: "idx_rt_user")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model reviews {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gym_id        String    @db.Uuid
+  author_label  String    @default("Verified Member")
+  rating        Decimal   @db.Decimal(2, 1)
+  body          String
+  helpful_count Int       @default(0)
+  source        String    @default("platform")
+  external_id   String?   @unique
+  created_at    DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_at    DateTime? @db.Timestamptz(6)
+  gyms          Gym       @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
+model trainers {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  gym_id            String    @db.Uuid
+  name              String
+  photo_url         String?
+  years_experience  Int       @default(0) @db.SmallInt
+  specialization    String
+  price_per_session Int
+  languages         String[]  @default([])
+  sort_order        Int       @default(0) @db.SmallInt
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_at        DateTime? @db.Timestamptz(6)
+  gyms              Gym       @relation(fields: [gym_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+enum amenity_type {
+  Cardio
+  Weights
+  CrossFit
+  Swimming
+  Steam
+  Sauna
+  Shower
+  Lockers
+  AC
+  Womens_Section
+  PT
+  Group_Classes
+  Parking
+  WiFi
+  Cafeteria
+}
+
+enum user_role {
+  owner
+  admin
+  super_admin
+  member
+}
+
+// ============================================
+// FITOS TRACKING ENUMS
+// ============================================
+
+enum MovementPattern {
+  PUSH_HORZ
+  PUSH_VERT
+  PULL_HORZ
+  PULL_VERT
+  SQUAT
+  HINGE
+  LUNGE
+  CARRY
+  ROTATION
+  CORE_ANTI
+  ISOLATION
+}
+
+enum JointComplexity {
+  compound
+  isolation
+}
+
+enum PlaneOfMotion {
+  sagittal
+  frontal
+  transverse
+  multi
+}
+
+enum Severity {
+  absolute
+  relative
+  caution
+}
+
+enum Goal {
+  Strength
+  Hypertrophy
+  Endurance
+  Power
+  General_Health
+  Recomposition
+}
+
+enum EquipmentCode {
+  BB
+  DB
+  KB
+  MACHINE
+  CABLE
+  BW
+  BAND
+  TRX
+  SM
+  MEDBALL
+}
+
+// ============================================
+// CORE EXERCISE TABLES
+// ============================================
+
+model Exercise {
+  id                     String          @id @default(uuid()) @db.Uuid
+  code                   String          @unique
+  name                   String
+  displayName            String          @map("display_name")
+  description            String?
+  primaryPattern         MovementPattern @map("primary_pattern")
+  jointComplexity        JointComplexity @map("joint_complexity")
+  planeOfMotion          PlaneOfMotion   @map("plane_of_motion")
+  difficultyScore        Int             @map("difficulty_score")
+  stabilityDemand        Int             @map("stability_demand")
+  coordinationComplexity Int             @map("coordination_complexity")
+  mobilityRequired       Int             @map("mobility_required")
+  injuryRiskFactor       Int             @map("injury_risk_factor")
+  goalStrength           Int             @map("goal_strength")
+  goalHypertrophy        Int             @map("goal_hypertrophy")
+  goalEndurance          Int             @map("goal_endurance")
+  goalPower              Int             @map("goal_power")
+  experienceMinimum      Int             @map("experience_minimum")
+  videoUrl               String?         @map("video_url")
+  imageUrl               String?         @map("image_url")
+  version                Int             @default(1)
+  metadata               Json?
+  createdAt              DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  muscles           ExerciseMuscle[]
+  equipment         ExerciseEquipment[]
+  contraindications ExerciseContraindication[]
+  progressionsFrom  ExerciseProgression[]      @relation("ProgressionFrom")
+  progressionsTo    ExerciseProgression[]      @relation("ProgressionTo")
+  gymAvailabilities GymExerciseDatabase[]
+  auditLogs         ExerciseAuditLog[]
+
+  @@index([difficultyScore, experienceMinimum])
+  @@map("exercises")
+}
+
+model Muscle {
+  id       String  @id @default(uuid()) @db.Uuid
+  name     String  @unique
+  isMajor  Boolean @map("is_major")
+  parentId String? @map("parent_id") @db.Uuid
+
+  parent    Muscle?          @relation("MuscleHierarchy", fields: [parentId], references: [id])
+  children  Muscle[]         @relation("MuscleHierarchy")
+  exercises ExerciseMuscle[]
+
+  @@map("muscles")
+}
+
+model ExerciseMuscle {
+  exerciseId String @map("exercise_id") @db.Uuid
+  muscleId   String @map("muscle_id") @db.Uuid
+  role       String // primary, secondary, tertiary, stabilizer
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  muscle   Muscle   @relation(fields: [muscleId], references: [id], onDelete: Cascade)
+
+  @@id([exerciseId, muscleId])
+  @@index([muscleId, role])
+  @@map("exercise_muscles")
+}
+
+model Equipment {
+  id        String              @id @default(uuid()) @db.Uuid
+  code      EquipmentCode       @unique
+  name      String
+  category  String
+  exercises ExerciseEquipment[]
+
+  @@map("equipment")
+}
+
+model ExerciseEquipment {
+  exerciseId  String  @map("exercise_id") @db.Uuid
+  equipmentId String  @map("equipment_id") @db.Uuid
+  isPrimary   Boolean @default(false) @map("is_primary")
+
+  exercise  Exercise  @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+
+  @@id([exerciseId, equipmentId])
+  @@map("exercise_equipment")
+}
+
+model Contraindication {
+  id          String @id @default(uuid()) @db.Uuid
+  flag        String @unique
+  description String
+
+  exercises ExerciseContraindication[]
+
+  @@map("contraindications")
+}
+
+model ExerciseContraindication {
+  exerciseId         String   @map("exercise_id") @db.Uuid
+  contraindicationId String   @map("contraindication_id") @db.Uuid
+  severity           Severity
+
+  exercise         Exercise         @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  contraindication Contraindication @relation(fields: [contraindicationId], references: [id], onDelete: Cascade)
+
+  @@id([exerciseId, contraindicationId])
+  @@map("exercise_contraindications")
+}
+
+model ExerciseProgression {
+  fromExerciseId  String @map("from_exercise_id") @db.Uuid
+  toExerciseId    String @map("to_exercise_id") @db.Uuid
+  progressionType String @map("progression_type") // load, stability, complexity, range_of_motion
+
+  fromExercise Exercise @relation("ProgressionFrom", fields: [fromExerciseId], references: [id], onDelete: Cascade)
+  toExercise   Exercise @relation("ProgressionTo", fields: [toExerciseId], references: [id], onDelete: Cascade)
+
+  @@id([fromExerciseId, toExerciseId])
+  @@map("exercise_progressions")
+}
+
+model GymExerciseDatabase {
+  gymId       String  @map("gym_id") @db.Uuid
+  exerciseId  String  @map("exercise_id") @db.Uuid
+  isAvailable Boolean @default(true) @map("is_available")
+  customNotes String? @map("custom_notes")
+
+  gym      Gym      @relation(fields: [gymId], references: [id])
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@id([gymId, exerciseId])
+  @@index([gymId, isAvailable])
+  @@map("gym_exercise_database")
+}
+
+// ============================================
+// AUDIT TABLES
+// ============================================
+
+model ExerciseAuditLog {
+  id           String   @id @default(uuid()) @db.Uuid
+  exerciseId   String   @map("exercise_id") @db.Uuid
+  changedBy    String   @map("changed_by") @db.Uuid
+  changedAt    DateTime @default(now()) @map("changed_at") @db.Timestamptz(6)
+  fieldChanged String   @map("field_changed")
+  oldValue     Json?    @map("old_value")
+  newValue     Json?    @map("new_value")
+  changeReason String?  @map("change_reason")
+
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@map("exercise_audit_log")
+}
+
+// ============================================
+// ASSESSMENT TABLES
+// ============================================
+
+model Assessment {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  responses       Json
+  computedVector  Json     @map("computed_vector")
+  experienceScore Int      @map("experience_score")
+  safetyFlags     Json     @default("[]") @map("safety_flags")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user        User         @relation(fields: [userId], references: [id])
+  workoutPlan WorkoutPlan?
+
+  @@map("assessments")
+}
+
+model WorkoutPlan {
+  id                String   @id @default(uuid()) @db.Uuid
+  assessmentId      String   @unique @map("assessment_id") @db.Uuid
+  userId            String   @map("user_id") @db.Uuid
+  metadata          Json
+  programParameters Json     @map("program_parameters")
+  sessions          Json
+  progressionRules  Json     @map("progression_rules")
+  safetyFlags       Json     @map("safety_flags")
+  adaptationLog     Json?    @map("adaptation_log")
+  isActive          Boolean  @default(true) @map("is_active")
+  deloadTriggered   Boolean  @default(false) @map("deload_triggered")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  assessment      Assessment       @relation(fields: [assessmentId], references: [id])
+  user            User             @relation(fields: [userId], references: [id])
+  workoutSessions WorkoutSession[]
+
+  @@map("workout_plans")
+}
+
+model WorkoutSession {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  planId          String   @map("plan_id") @db.Uuid
+  sessionDate     DateTime @map("session_date") @db.Timestamptz(6)
+  dayNumber       Int      @map("day_number")
+  status          String // 'completed' | 'partial' | 'missed'
+  durationMinutes Int?     @map("duration_minutes")
+  rpeAverage      Float?   @map("rpe_average")
+  notes           String?
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user            User             @relation(fields: [userId], references: [id])
+  plan            WorkoutPlan      @relation(fields: [planId], references: [id])
+  performanceLogs PerformanceLog[]
+
+  @@index([userId, planId, sessionDate])
+  @@map("workout_sessions")
+}
+
+model PerformanceLog {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @map("user_id") @db.Uuid
+  exerciseId    String   @map("exercise_id") @db.Uuid
+  planId        String   @map("plan_id") @db.Uuid
+  sessionId     String?  @map("session_id") @db.Uuid
+  sessionDate   DateTime @map("session_date") @db.Timestamptz(6)
+  sets          Json // [{reps, load, rpe, completed}]
+  completedSets Int      @default(0) @map("completed_sets")
+  targetSets    Int      @default(0) @map("target_sets")
+  maxLoad       Float?   @map("max_load")
+  estimatedE1RM Float?   @map("estimated_e1rm")
+  notes         String?
+
+  user    User            @relation(fields: [userId], references: [id])
+  session WorkoutSession? @relation(fields: [sessionId], references: [id])
+
+  @@index([userId, exerciseId, sessionDate])
+  @@map("performance_logs")
+}
+
+model PersonalRecord {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @map("user_id") @db.Uuid
+  exerciseId String   @map("exercise_id") @db.Uuid
+  recordDate DateTime @map("record_date") @db.Timestamptz(6)
+  e1RM       Float    @map("e1rm")
+  load       Float
+  reps       Int
+  sets       Int
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, exerciseId])
+  @@index([userId, recordDate])
+  @@map("personal_records")
+}
